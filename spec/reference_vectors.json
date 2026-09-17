@@ -1,0 +1,52 @@
+{
+  "_source": "ISSUE SPEC response.growth_survival sections 2 and 3",
+  "_generated_by": "spec/check_vectors.py --emit",
+  "_tolerance": "6 significant digits, relative, unless a field declares otherwise",
+
+  "constants": {
+    "alpha_per_Gy": 0.24,
+    "beta_per_Gy2": 0.06,
+    "T_rep_h": 1.5,
+    "mu_per_h": 0.4620981203732968,
+    "sigma_div": 0.10,
+    "T_doubling_h": 58.4,
+    "T_active_h": 96.0
+  },
+
+  "G_of_T": {
+    "_note": "sig = significant digits the spec states this value to",
+    "24.0": {"value": 0.164076, "sig": 6},
+    "96.0": {"value": 0.044068, "sig": 6},
+    "1e-09": {"value": 0.999999999846, "sig": 12},
+    "1e-06": {"value": 0.999999845967, "sig": 12}
+  },
+
+  "branch_continuity": {
+    "x": 1e-3,
+    "max_abs_diff": 1.7e-11,
+    "tolerance": 5e-11,
+    "note": "The spec text states 1e-11. The true Taylor truncation term at x=1e-3 is x^3/60 = 1.67e-11, so a literal test at 1e-11 fails. See CORRECTION 2."
+  },
+
+  "SF_at_G96": {
+    "0": 1.0,
+    "2": 6.122734e-01,
+    "5": 2.819285e-01,
+    "10": 6.964060e-02,
+    "20": 2.858008e-03,
+    "40": 9.851017e-07,
+    "1000": 0.0
+  },
+
+  "protraction_at_10Gy": {
+    "T_24h": 0.033896,
+    "T_96h": 0.069641
+  },
+
+  "G_C_band": {
+    "quantity": "1 / G(96 h)",
+    "value": 22.6922,
+    "low": 12.0,
+    "high": 23.0
+  }
+}

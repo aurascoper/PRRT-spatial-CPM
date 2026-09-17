@@ -34,6 +34,8 @@ study1/                   DPK vs Monte Carlo transport study
 study2_response_layer/    open-loop LQ + Lea-Catcheside TCP verification
 study3_closed_loop/       4-cycle closed-loop selection with re-transport
 figures/                  Study-3 summary figures
+paraview/                 ParaView volumes: cycle-1 vs cycle-4 .vti + .pvd
+                          series + the exporter that made them
 data/                     hashed T0 geometry + cycle-4 state export
 ```
 
@@ -64,6 +66,19 @@ repair half-time T_rep = 1.5 h (declared prior, consistency-gated against
 their measured 1/G ~ 12); 96 h active exposure per cycle; doubling time
 58.4 h; expression drift sigma_div = 0.10 per division; 4 cycles x 8 weeks
 (NETTER-1 convention); mean viable dose 10 Gy/cycle (declared scaling).
+
+## ParaView
+
+`paraview/prrt_c1.vti` and `paraview/prrt_c4.vti` are VTK ImageData volumes
+of the representative closed-loop run (cycle 1 and cycle 4), with point
+arrays `cell_id`, `tissue_type`, `activity_relative` (K1-normalized uptake),
+`dose_Gy`, `SF`, `ln_expression`, and a `.pvd` series
+(`paraview/prrt_cycles.pvd`). Spacing is the declared 40 um per site with
+its source recorded in the file's field data, following the evidence
+discipline of the Biofilms `export_vti.jl` exporter. Axis convention is
+pinned by an embedded orientation probe (x-fastest points, X=i, Y=j, Z=k).
+Regenerate with `pvpython paraview/export_vti_prrt.py` (ParaView 6.2 /
+VTK 9.7).
 
 ## License
 

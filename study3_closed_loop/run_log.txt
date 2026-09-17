@@ -1,0 +1,26 @@
+Geometry verified sha a6883b84a577dd5d.. | capacity 13978 | G96=0.044068
+GATE K2 null-selection: PASS — mean e after each cycle = [1.0, 1.0, 1.0, 1.0] (bit-stable 1.0)
+
+=== CLOSED ARM (5 dynamics seeds) ===
+closed rep0: ln-e drift c1->c4 = -0.4966, deaths/cyc = [12728, 12760, 12752, 12751], n_end c4 = 13978
+closed rep1: ln-e drift c1->c4 = -0.4481, deaths/cyc = [12746, 12738, 12722, 12790], n_end c4 = 13978
+closed rep2: ln-e drift c1->c4 = -0.5033, deaths/cyc = [12764, 12758, 12750, 12749], n_end c4 = 13978
+closed rep3: ln-e drift c1->c4 = -0.5159, deaths/cyc = [12769, 12690, 12749, 12849], n_end c4 = 13978
+closed rep4: ln-e drift c1->c4 = -0.4551, deaths/cyc = [12738, 12769, 12778, 12723], n_end c4 = 13978
+
+=== OPEN ARM (5 dynamics seeds, frozen map) ===
+open   rep0: ln-e drift c1->c4 = -0.2418, deaths/cyc = [12806, 12767, 12762, 12745]
+open   rep1: ln-e drift c1->c4 = -0.1907, deaths/cyc = [12808, 12744, 12795, 12743]
+open   rep2: ln-e drift c1->c4 = -0.1910, deaths/cyc = [12702, 12810, 12749, 12697]
+open   rep3: ln-e drift c1->c4 = -0.1164, deaths/cyc = [12754, 12782, 12796, 12793]
+open   rep4: ln-e drift c1->c4 = -0.2033, deaths/cyc = [12754, 12747, 12715, 12775]
+GATE K3 extinction: PASS — cycle1 deaths 13978/13978; cycles2-4 ['extinct', 'extinct', 'extinct']
+GATE K1 conservation (all cycles, all arms): PASS — sum(A) == A_ADMIN at every write (bit-exact)
+
+=== VERDICT: PASS-SELECTION ===
+Delta ln-e closed (mean of 5): -0.4838 per replicate: ['-0.4966', '-0.4481', '-0.5033', '-0.5159', '-0.4551']
+Delta ln-e open   (mean of 5): -0.1886 per replicate: ['-0.2418', '-0.1907', '-0.1910', '-0.1164', '-0.2033']
+Delta_sel = +0.2952; worst (least-drifted) open = -0.1164
+Survivors per cycle (closed): [[1250, 1218, 1226, 1227], [1232, 1240, 1256, 1188], [1214, 1220, 1228, 1229], [1209, 1288, 1229, 1129], [1240, 1209, 1200, 1255]]
+
+Wrote /home/aurascoper/Developer/PRRT-spatial-cpm/study3_closed_loop/verdict.json

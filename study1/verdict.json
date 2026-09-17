@@ -1,0 +1,12 @@
+{
+ "verdict": "FAIL-DPK",
+ "cell_p95": 0.2384268152705522,
+ "cell_p50": 0.03946312729306134,
+ "mean_residual": 0.08287416435493468,
+ "ref_noise_floor_p95": 0.011695723456463407,
+ "ladder_p95_AB": 0.03277712208116849,
+ "ladder_p95_23": 0.026164929432804043,
+ "energy_dpk_over_ref": 1.0618698397692479,
+ "negative_control_p95": 2.3048628155401443,
+ "mechanism": "FFT-convolution infinite-medium boundary vs physical escape; radial DPK/REF 1.000 center -> 1.033 boundary (uniform-box C3)"
+}

@@ -1,0 +1,71 @@
+# PRRT-spatial-CPM: closing the loop from measured activity to cell-resolved response
+
+Code, protocols, and verdicts for three executed studies behind the preprint
+*Closing the Loop from Measured Activity to Cell-Resolved Response*
+(`preprint/`). The framework couples histology-initialized Cellular Potts
+geometry to Lu-177 radiotherapy transport and a heritable SSTR2 expression
+trait, and tests whether retreatment failure in neuroendocrine tumors is an
+emergent property of spatial heterogeneity.
+
+This work extends the one-way transport foundation of
+[Kinder & Faulkner 2026, Biofilms](https://github.com/ffinkdevs/Biofilms)
+(the `coupling/` HDF5 snapshot -> transport -> `import_dose_field!`
+architecture) to the neuroendocrine, CPM, histological realm.
+
+## The three studies (each pre-declared, gated, committed with its verdict)
+
+| Study | Question | Verdict |
+|---|---|---|
+| 1 — transport caching | Is a cached dose-point kernel (FFT convolution) admissible vs full Geant4 re-transport? | **FAIL-DPK**: cell p95 = 23.8% (criterion 2%); boundary-shell mechanism; full re-transport mandated |
+| 2 — open-loop response | Do protracted LQ kinetics on the validated dose field reproduce the Mellhammar TCP divergence? | **PASS-DIVERGENCE**: TCP_het < TCP_unif at every dose level; Jensen mechanism; 2331x the noise bar |
+| 3 — closed loop | Does re-uptake ∝ heritable expression drive clone selection over 4 clinical cycles? | **PASS-SELECTION**: ln-e drift −0.484 closed vs −0.189 open-loop control; contrast +0.295; compounding only when the loop closes |
+
+Every protocol was written and amended **before** any verdict-issuing run,
+with negative-control gates that can fail (and did: the gate ladder refused
+three defective G(T) implementations in Study 2 and two of the protocol's
+own pre-declared predictions were corrected by amendment before the runs —
+see each `PROTOCOL.md` amendment history).
+
+## Repository layout
+
+```
+preprint/                 manuscript (LaTeX + PDF + bibliography data)
+study1/                   DPK vs Monte Carlo transport study
+study2_response_layer/    open-loop LQ + Lea-Catcheside TCP verification
+study3_closed_loop/       4-cycle closed-loop selection with re-transport
+figures/                  Study-3 summary figures
+data/                     hashed T0 geometry + cycle-4 state export
+```
+
+## Reproducing
+
+Requirements: Python 3.12+ (numpy, scipy), Geant4 11.4.2 with
+RadioactiveDecay 6.1.2 (ENSDF), 24-thread CPU recommended.
+
+```bash
+# Study 2 (minutes; needs study1's 128M dose field, see data/)
+python study2_response_layer/study2_run.py
+
+# Study 3 (16 transport runs x ~75 s + dynamics; see g4env.sh for Geant4 env)
+source study3_closed_loop/g4env.sh
+python study3_closed_loop/study3_run.py full
+```
+
+The hashed fixed objects (`data/geometry_pitch40.npz`,
+sha256 `a6883b84...`) pin the synthetic lesion geometry: 25^3 voxels at
+40 um pitch, 13,978 viable cells, lognormal expression (sigma = 0.6),
+declared masks (viable/necrotic/stroma).
+
+## Declared parameters (not fitted)
+
+Radiobiology from [Tamborino et al. 2025](https://doi.org/10.2967/jnumed.125.269470)
+(EBRT intrinsic fit for NCI-H69): alpha = 0.24 Gy^-1, beta = 0.06 Gy^-2;
+repair half-time T_rep = 1.5 h (declared prior, consistency-gated against
+their measured 1/G ~ 12); 96 h active exposure per cycle; doubling time
+58.4 h; expression drift sigma_div = 0.10 per division; 4 cycles x 8 weeks
+(NETTER-1 convention); mean viable dose 10 Gy/cycle (declared scaling).
+
+## License
+
+CC0-1.0 (matching the Biofilms upstream). The preprint text is the
+citation of record for the specification.

@@ -1,0 +1,182 @@
+{
+ "tcp_mc_2023": {
+  "doi": "10.2967/jnumed.123.265523",
+  "title": "Tumor Control Probability and Small-Scale Monte Carlo Dosimetry: Effects of Heterogenous Intratumoral Activity Distribution in Radiopharmaceutical Therapy",
+  "journal": "Journal of Nuclear Medicine",
+  "year": 2023,
+  "volume": "64",
+  "pages": "1632-1637",
+  "authors": "Mellhammar, Emma; Dahlbom, Magnus; Vilhelmsson-Timmermand, Oskar; Strand, Sven-Erik"
+ },
+ "cluster_161Tb": {
+  "doi": "10.2967/jnumed.123.265509",
+  "title": "Membrane and Nuclear Absorbed Doses from\n                    <sup>177</sup>\n                    Lu and\n                    <sup>161</sup>\n                    Tb in Tumor Clusters: Effect of Cellular Heterogeneity and Potential Benefit of Dual Targeting\u2014A Monte Carlo Study",
+  "journal": "Journal of Nuclear Medicine",
+  "year": 2023,
+  "volume": "64",
+  "pages": "1619-1624",
+  "authors": "Larouze, Alexandre; Alcocer-\u00c1vila, Mario; Morgat, Cl\u00e9ment; Champion, Christophe; Hindi\u00e9, Elif"
+ },
+ "pm_svalues": {
+  "doi": "10.1186/s40658-020-0276-5",
+  "title": "Cellular dosimetry of [177Lu]Lu-DOTA-[Tyr3]octreotate radionuclide therapy: the impact of modeling assumptions on the correlation with in vitro cytotoxicity",
+  "journal": "EJNMMI Physics",
+  "year": 2020,
+  "volume": "7",
+  "pages": "",
+  "authors": "Tamborino, Giulia; De Saint-Hubert, Marijke; Struelens, Lara; Seoane, Dayana C.; Ruigrok, Eline A. M.; Aerts, An; van Cappellen, Wiggert A.; de Jong, Marion"
+ },
+ "mvogo_rit": {
+  "doi": "10.1038/s41598-026-47796-w",
+  "title": "Cancer treatment by radioimmunotherapy: insights from a dynamical model of cancer stem cells and hypoxia effects",
+  "journal": "Scientific Reports",
+  "year": 2026,
+  "volume": "16",
+  "pages": "",
+  "authors": "Mvogo, Alain; Essongo, Frank Eric; Hubert Ben-Bolie, Germain"
+ },
+ "radcell": {
+  "doi": "10.1088/1361-6560/abd4f9",
+  "title": "Development of a coupled simulation toolkit for computational radiation biology based on Geant4 and CompuCell3D",
+  "journal": "Physics in Medicine &amp; Biology",
+  "year": 2021,
+  "volume": "66",
+  "pages": "045026",
+  "authors": "Liu, Ruirui; Higley, Kathryn A; Swat, Maciej H; Chaplain, Mark A J; Powathil, Gibin G; Glazier, James A"
+ },
+ "gate_melanin": {
+  "doi": "10.1088/0031-9155/59/9/2183",
+  "title": "Internal dosimetry through GATE simulations of preclinical radiotherapy using a melanin-targeting ligand",
+  "journal": "Physics in Medicine and Biology",
+  "year": 2014,
+  "volume": "59",
+  "pages": "2183-2198",
+  "authors": "Perrot, Y; Degoul, F; Auzeloux, P; Bonnet, M; Cachin, F; Chezal, J M; Donnarieix, D; Labarre, P"
+ },
+ "melanin_plos": {
+  "doi": "10.1371/journal.pone.0007229",
+  "title": "Physico-Chemical Evaluation of Rationally Designed Melanins as Novel Nature-Inspired Radioprotectors",
+  "journal": "PLoS ONE",
+  "year": 2009,
+  "volume": "4",
+  "pages": "e7229",
+  "authors": "Schweitzer, Andrew D.; Howell, Robertha C.; Jiang, Zewei; Bryan, Ruth A.; Gerfen, Gary; Chen, Chin-Cheng; Mah, Dennis; Cahill, Sean"
+ },
+ "elastix_reg": {
+  "doi": "10.1038/s41598-021-89841-w",
+  "title": "Elastic transformation of histological slices allows precise co-registration with microCT data sets for a refined virtual histology approach",
+  "journal": "Scientific Reports",
+  "year": 2021,
+  "volume": "11",
+  "pages": "",
+  "authors": "Albers, Jonas; Svetlove, Angelika; Alves, Justus; Kraupner, Alexander; di Lillo, Francesca; Markus, M. Andrea; Tromba, Giuliana; Alves, Frauke"
+ },
+ "ppgl_meta": {
+  "doi": "10.3389/fonc.2023.1141648",
+  "title": "Peptide receptor radionuclide therapy in advanced Pheochromocytomas and Paragangliomas: a systematic review and meta-analysis",
+  "journal": "Frontiers in Oncology",
+  "year": 2023,
+  "volume": "13",
+  "pages": "",
+  "authors": "Su, Dan; Yang, Hongyu; Qiu, Chen; Chen, Yue"
+ },
+ "kiaa_braf": {
+  "doi": "10.3389/fonc.2024.1408729",
+  "title": "Heterogeneous SSTR2 target expression and a novel KIAA1549::BRAF fusion clone in a progressive metastatic lesion following 177Lutetium-DOTATATE molecular radiotherapy in neuroblastoma: a case report",
+  "journal": "Frontiers in Oncology",
+  "year": 2024,
+  "volume": "14",
+  "pages": "",
+  "authors": "Park, Se Whee Sammy; Fransson, Susanne; Sundquist, Fredrik; Nilsson, Joachim N.; Gryb\u00e4ck, Per; Wessman, Sandra; Str\u00f6mgren, Jacob; Djos, Anna"
+ },
+ "melanin_jtm": {
+  "doi": "10.1186/s12967-026-08133-x",
+  "title": "Application of melanin and its engineered nanomaterials in tumor radiotherapy: a review",
+  "journal": "Journal of Translational Medicine",
+  "year": 2026,
+  "volume": "24",
+  "pages": "",
+  "authors": "Chen, Cheng; Guo, Yong"
+ },
+ "alphap_ar_hist": {
+  "pmcid": "PMC12354851",
+  "doi": "10.1038/s41598-025-09277-4",
+  "title": "Enhanced activity localization and microscale dosimetry in alpha-emitter radiopharmaceutical therapy using integrated autoradiography and histological imaging.",
+  "journal": "",
+  "year": "2025",
+  "authors": "Sahota S, Quirindongo KA, Piccolo J, Chhabra A, Zaid N, Deveauxbray S, Charles-Obi KC, Miller B, Hobbs RF, Sgouros G, Bastiaannet R."
+ },
+ "sstr2_het": {
+  "pmcid": "PMC7738856",
+  "doi": "10.7150/thno.51215",
+  "title": "Inter and intra-tumor somatostatin receptor 2 heterogeneity influences peptide receptor radionuclide therapy response.",
+  "journal": "",
+  "year": "2021",
+  "authors": "Feijtel D, Doeswijk GN, Verkaik NS, Haeck JC, Chicco D, Angotti C, Konijnenberg MW, de Jong M, Nonnekens J."
+ },
+ "xray_hist": {
+  "pmcid": "PMC6680277",
+  "doi": "10.1016/j.ajpath.2019.05.004",
+  "title": "X-ray Micro-Computed Tomography for Nondestructive Three-Dimensional (3D) X-ray Histology.",
+  "journal": "",
+  "year": "2019",
+  "authors": "Katsamenis OL, Olding M, Warner JA, Chatelet DS, Jones MG, Sgalla G, Smit B, Larkin OJ, Haig I, Richeldi L, Sinclair I, Lackie PM, Schneider P."
+ },
+ "invitro_prrt": {
+  "doi": "10.2967/jnumed.125.269470",
+  "title": "Establishing In\u00a0Vitro Dosimetric Models and Dose\u2013Effect Relationships for <sup>177</sup>Lu-DOTATATE in Neuroendocrine Tumors",
+  "journal": "Journal of Nuclear Medicine",
+  "year": 2025,
+  "authors": "Tamborino, Giulia; Engbers, Pleun; de Wolf, Tijmen H.; Reuvers, Thom G.A.; Verhagen, Rob; Konijnenberg, Mark; Nonnekens, Julie",
+  "volume": "66",
+  "pages": "1291-1298"
+ },
+ "liu_pbt": {
+  "arxiv": "2501.11875",
+  "title": "Developing an Agent-Based Mathematical Model for Simulating Post-Irradiation Cellular Response: A Crucial Component of a Digital Twin Framework for Personalized Radiation Treatment",
+  "authors": "Ruirui Liu; Marciek H. Swat; James A. Glazier; Yu Lei; Sumin Zhou; Kathryn A. Higley",
+  "year": "2026"
+ },
+ "albanese": {
+  "arxiv": "2606.04004",
+  "title": "Oxygenation and spatial heterogeneity shape radiotherapy protocol ranking through phenotypic adaptation",
+  "authors": "Francesco Albanese; Giulia Chiari; Marcello Edoardo Delitala",
+  "year": "2026"
+ },
+ "cordoni": {
+  "arxiv": "2604.27630",
+  "title": "A stochastic agent-based extension of the GSM2 model for particle therapy: cell-cycle dynamics, dose-rate dependence, and fractionation effects",
+  "authors": "Francesco G. Cordoni; Marco Battestini; Marta Missiaggia",
+  "year": "2026"
+ },
+ "flash_redox": {
+  "arxiv": "2508.20510",
+  "title": "Unraveling the Redox Mechanisms Underlying FLASH Radiotherapy: Critical Dose Thresholds and NRF2-Driven Tissue Sparing",
+  "authors": "Yan Zhang; Chenyang Huang; Ankang Hu; Yucheng Wang; Yixun Zhu; Wanyi Zhou; Jiaqi Qiu; Jian Wang",
+  "year": "2026"
+ },
+ "tdt_ryhiner": {
+  "arxiv": "2511.03755",
+  "title": "Mathematical and Computational Nuclear Oncology: Toward Optimized Radiopharmaceutical Therapy via Digital Twins",
+  "authors": "Marc Ryhiner; Yangmeihui Song; Babak Saboury; Gerhard Glatting; Arman Rahmim; Kuangyu Shi",
+  "year": "2026"
+ },
+ "sahota2025_x": {
+  "doi": "10.1038/s41598-025-09277-4",
+  "title": "Enhanced activity localization and microscale dosimetry in alpha-emitter radiopharmaceutical therapy using integrated autoradiography and histological imaging",
+  "journal": "Scientific Reports",
+  "year": 2025,
+  "volume": "15",
+  "pages": "",
+  "authors": "Sahota, Sandeep; Quirindongo, Krystal A.; Piccolo, Joseph; Chhabra, Anupriya; Zaid, Nouran; Deveauxbray, Simin; Charles-Obi, Kenechukwu C.; Miller, Brian; Hobbs, Robert F.; Sgouros, George; Bastiaannet, Remco"
+ },
+ "feijtel2021_x": {
+  "doi": "10.7150/thno.51215",
+  "title": "Inter and intra-tumor somatostatin receptor 2 heterogeneity influences peptide receptor radionuclide therapy response",
+  "journal": "Theranostics",
+  "year": 2021,
+  "volume": "11",
+  "pages": "491-505",
+  "authors": "Feijtel, Danny; Doeswijk, Gabriela N.; Verkaik, Nicole S.; Haeck, Joost C.; Chicco, Daniela; Angotti, Carmelina; Konijnenberg, Mark W.; de Jong, Marion; Nonnekens, Julie"
+ }
+}

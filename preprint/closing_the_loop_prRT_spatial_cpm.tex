@@ -1,0 +1,659 @@
+% ============================================================
+%  Closing the Loop from Measured Activity to Cell-Resolved Response:
+%  A Computational Framework for Spatially Explicit PRRT Modeling
+%  Hunter Kinder & Brett Faulkner
+%  Preprint - not peer reviewed - September 2026
+%  This manuscript reports no live culture, recombinant/synthetic
+%  nucleic-acid experiment, human or animal research, or physical
+%  irradiation experiment. It is a computational framework
+%  specification and verified literature-gap analysis; it reports no
+%  executed simulation results.
+% ============================================================
+\documentclass[11pt]{article}
+
+% --- Geometry -----------------------------------------------
+\usepackage[top=1in,bottom=1in,left=1.1in,right=1.1in]{geometry}
+
+% --- Encoding & fonts ----------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+\usepackage{lmodern}
+\usepackage{microtype}
+
+% --- Math ---------------------------------------------------
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{bm}
+
+% --- Tables -------------------------------------------------
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{longtable}
+
+% --- Graphics & colour ----------------------------------------
+\usepackage{graphicx}
+\usepackage{xcolor}
+\definecolor{linkblue}{RGB}{0,70,150}
+
+% --- Hyperref ------------------------------------------------
+\usepackage[colorlinks=true,
+            linkcolor=linkblue,
+            citecolor=linkblue,
+            urlcolor=linkblue,
+            pdftitle={Closing the Loop from Measured Activity to Cell-Resolved Response: A Computational Framework for Spatially Explicit PRRT Modeling},
+            pdfauthor={Hunter Kinder, Brett Faulkner}]{hyperref}
+
+% --- Layout ---------------------------------------------------
+\usepackage{parskip}
+\setlength{\parskip}{6pt}
+\usepackage{setspace}
+\setstretch{1.15}
+\usepackage{titlesec}
+\titleformat{\section}{\large\bfseries}{\thesection.}{0.5em}{}
+\titleformat{\subsection}{\normalsize\bfseries}{\thesubsection}{0.5em}{}
+\titlespacing*{\section}{0pt}{14pt}{6pt}
+\titlespacing*{\subsection}{0pt}{10pt}{4pt}
+
+% --- Floats & captions ----------------------------------------
+\usepackage{caption}
+\captionsetup{font=small,labelfont=bf}
+
+% --- Line breaking --------------------------------------------
+\emergencystretch=3em
+
+% ============================================================
+\begin{document}
+
+% ---- Title block --------------------------------------------
+\begin{center}
+  {\LARGE\bfseries Closing the Loop from Measured Activity to\\
+   Cell-Resolved Response}\\[10pt]
+  {\large\bfseries A Computational Framework Specification and Verified Gap\\
+   Analysis for Spatially Explicit Modeling of Peptide Receptor\\
+   Radionuclide Therapy in Neuroendocrine Tumors}\\[14pt]
+  {\normalsize
+    \textbf{Hunter Kinder}, B.A., M.A.T.L. --- Independent Researcher, Missouri, USA\\[2pt]
+    \textbf{Brett Faulkner}, B.Sc. --- Independent Researcher\\[10pt]
+  }
+  {\small
+    \textit{Preprint --- not peer reviewed}\\
+    \textit{Version 1.0 --- September 2026}
+  }
+\end{center}
+\vspace{4pt}
+\noindent\rule{\linewidth}{0.5pt}
+\vspace{2pt}
+
+% ---- Abstract ------------------------------------------------
+\begin{abstract}
+\noindent
+Peptide receptor radionuclide therapy (PRRT) fails in the clinic through a spatial process:
+somatostatin receptor subtype 2 (SSTR2) expression varies within and between lesions, the
+delivered absorbed dose is heterogeneous at the cellular scale, and retreatment appears to
+select for low-expression clones. Each fragment of this process is measured and modelled
+somewhere in the literature. No study joins the fragments: small-scale dosimetry stops at dose
+histograms, biological response models assume uniform dose or abstract geometry, and no
+published work couples a measured intratumoral activity distribution to a spatially explicit,
+cell-resolved response model that feeds selection dynamics back into the next treatment cycle.
+We verified that absence by systematic search against explicit refutation criteria, and we catalog the near-miss studies
+that fail individual criteria. The searched sources were EuropePMC, PubMed Central, OpenAlex, Crossref, CORE, arXiv, and
+alphaXiv (September 2026).
+
+This manuscript specifies the missing model and audits what the specification does and does not
+support. The framework initializes a Cellular Potts Model (CPM) from same-section quantitative autoradiography and
+histology. It transports electron and alpha dose through the evolving cell geometry, drives cell-state transitions with
+protracted-exposure linear-quadratic kinetics, and carries a heritable SSTR2 expression trait. That trait's differential
+survival under heterogeneous dose closes the loop into the next cycle's activity map. The one-way dose-transfer foundation
+(geometry export, transport, dose conversion, cell-level attribution) is inherited from our
+validated CPM--OpenMC coupling and is reused here unchanged; what is new is the response layer
+and the activity-feedback specification. No simulation results are reported: every executed
+quantity in this preprint is either a literature prior or a verified absence.
+
+The boundaries are declared rather than discovered late. The parameters are separated by
+provenance (measured inputs, literature priors, declared modelling choices) and are not reported
+as though they were uniform in evidentiary weight. The model can test clone selection under
+heterogeneous dose; it cannot represent immune response, bystander signalling, or vascular
+remodelling, and it makes no patient-specific prediction until parameterised against
+patient data. What the work establishes is a reproducible, fully specified loop and a verified
+statement of the gap it fills, with the measurements and controls required before any clinical
+claim can be evaluated.
+\end{abstract}
+\noindent\textbf{Keywords:} peptide receptor radionuclide therapy; neuroendocrine tumors;
+SSTR2 heterogeneity; cellular Potts model; microdosimetry; tumor control probability;
+digital twin
+\par
+\noindent\rule{\linewidth}{0.5pt}
+
+% ---- 1. Introduction -----------------------------------------
+\section{Introduction}\label{sec:intro}
+
+Peptide receptor radionuclide therapy delivers radiation to neuroendocrine tumor (NET) and
+pheochromocytoma/paraganglioma (PPGL) lesions through somatostatin-receptor targeting of
+beta-emitting lutetium-177 or alpha-emitting actinium-225 conjugates; in advanced PPGLs
+pooled disease control reaches 90\% with a pooled median progression-free survival near
+32 months \cite{su2023ppgl}. The therapy works, and
+its limits are known. Lesions that respond to a first cycle can progress under later ones,
+and the clinical pathology literature locates part of the failure inside the tumor's own
+spatial structure. SSTR2 expression differs between patients, between lesions, and between
+clones within one lesion. DNA damage after therapy concentrates in high-expression regions
+while low-expression regions are spared, and tumors that recur after treatment carry less
+SSTR2 than the treatment-naive primary \cite{feijtel2021,fransson2024}. A pediatric
+neuroblastoma case treated with $^{177}$Lu-DOTATATE shows the same pattern at clone
+resolution: a metastasis with weak SSTR2 staining absorbed 2~Gy where the better-expressing
+primary absorbed 54~Gy, and the lesion that progressed was the weakly expressing one
+\cite{fransson2024}.
+
+The dosimetry literature measures the other half of the story. Digital autoradiography of
+cryosections, registered to hematoxylin-and-eosin-stained neighbours, resolves the
+intratumoral activity distribution at tens of micrometres, and Monte Carlo transport through
+that measured source gives absorbed-dose distributions that a mean-organ or even a
+voxol-level model cannot recover \cite{mellhammar2023}. The same workflow extends to
+alpha emitters, where autoradiography and histology are acquired on the same section and
+stacked into a three-dimensional activity volume for microscale dosimetry \cite{sahota2025}.
+Cellular-scale dosimetry of $^{177}$Lu-DOTATATE shows that cluster geometry and subcellular
+source location move nuclear absorbed dose by factors of two or more
+\cite{tamborino2020,tamborino2025}, and heterogeneous targeting leaves unlabelled cells at
+3--17\% of the dose they would receive under uniform targeting \cite{larouze2023}.
+
+Between these two literatures sits a gap that is easy to state and hard to excuse. Dosimetry
+papers stop at the dose histogram and a tumor control probability (TCP) computed from it.
+Biological response models start from a uniform dose or an abstract geometry and evolve
+cell populations forward. Neither feeds the measured heterogeneity into a cell-resolved
+spatial model and asks what the selection dynamics do, cycle after cycle, to the expression
+distribution that the next dose will see. Section~\ref{sec:gap} verifies that no published
+study closes that loop, and catalogues the studies that come closest.
+
+This manuscript does three things. First, it states the closed-loop framework completely enough to be executed
+(Section~\ref{sec:framework}): histology-initialized CPM geometry, cell-resolved dosimetry,
+protracted-exposure response kinetics, and a heritable SSTR2 trait whose differential
+survival feeds the next cycle's activity map. Second, it separates every parameter by provenance ---
+measured input, literature prior, or declared modelling choice --- and refuses to report
+them as though they carried the same evidentiary weight (Section~\ref{sec:params}).
+Third, it declares the model's boundaries before any reader has to ask: what the
+specification can test, what it cannot represent, and what must be measured before a
+clinical claim is even formulable (Section~\ref{sec:boundaries}).
+
+The position of this work relative to our prior preprint is simple. There we coupled a CPM
+to OpenMC photon transport, executed the one-way path end to end, and audited what the
+coupling did and did not support \cite{kinder2026biofilm}. The dose-transfer machinery ---
+geometry export, transport, dose conversion, cell-level attribution with orientation and
+conservation checks --- is reused unchanged. What was missing there, and is specified here,
+is the biological response layer and the feedback that makes the activity map a function of
+what the previous cycle did to the cell population.
+
+% ---- 2. Related Work -----------------------------------------
+\section{Related Work: The Broken Chain}\label{sec:gap}
+
+\subsection{Measured-activity microdosimetry}
+
+Mellhammar et al.\ computed cell-weighted absorbed-dose distributions for $^{177}$Lu,
+$^{90}$Y, and $^{225}$Ac by defining the Monte Carlo source from digital autoradiography of
+xenograft cryosections and the cell positions from hematoxylin-eosin segmentation
+\cite{mellhammar2023}. Their result is the standing demonstration that voxel dose and cell
+dose are different quantities: low-dose voxels that contain few cells contribute less to the
+cell-dose histogram than their volume suggests, and TCP estimates built on the two
+distributions differ materially. Sahota et al.\ integrated quantitative autoradiography and
+histological imaging on the same tissue section for alpha-emitter therapy, using the
+anatomical image to stack sections into a three-dimensional activity volume for microscale
+dosimetry \cite{sahota2025}. Tamborino et al.\ built image-based multicellular dosimetry for
+$^{177}$Lu-DOTATATE in cluster-forming cell lines, showing cross-dose sensitivity to real
+cell placement that idealized packing models underestimate by 66--90\%
+\cite{tamborino2025}, and earlier established the sensitivity of nuclear S-values to
+measured cell morphology and to subcellular source location, including a Golgi-localized
+source raising nuclear dose by up to 149\% relative to uniform cytoplasmic activity
+\cite{tamborino2020}. Larouze et al.\ quantified what heterogeneous targeting costs in a
+19-cell cluster: with four cells unlabelled, membranes of unlabelled cells receive on
+average 9.6\% ($^{177}$Lu) or 2.9\% ($^{161}$Tb) of the uniform-targeting dose
+\cite{larouze2023}. None of these studies evolves a cell population; the dosimetry output
+is a distribution, and the biology is a static density map.
+
+\subsection{Biological response models without measured input}
+
+Liu, Swat, Glazier et al.\ built an agent-based cell-state transition model for
+post-irradiation response, validated against monolayer irradiation outcomes and framed as
+a digital-twin component \cite{liu2025pbt}. It represents cell phase evolution, phenotype
+evolution, and survival after irradiation, but its dose input is external-beam and
+effectively uniform; it carries no radionuclide, no receptor heterogeneity, and no measured
+activity distribution. Cordoni et al.\ extended the generalized stochastic microdosimetric
+model (GSM$^2$) to an agent-based framework with cell-cycle dynamics, dose-rate dependence,
+and fractionation effects on a fixed lattice \cite{cordoni2026}; again the radiation field
+is prescribed, not measured, and the application is particle therapy rather than
+radiopharmaceuticals. Albanese et al.\ modelled spatially resolved oxygenation and
+continuous phenotypic adaptation in a trait-structured partial-differential-equation system
+and used it to rank fractionation schedules \cite{albanese2026}; the framework is
+cell-resolved in neither geometry nor dose. Mvogo et al.\ compared $^{90}$Y, $^{177}$Lu,
+$^{131}$I, and $^{225}$Ac extrapolated dose rates in a delay-differential cancer-stem-cell
+model with linear-quadratic kinetics \cite{mvogo2026}; the model has no space at all. Zhang
+et al.\ resolved the peroxyl-radical and NRF2/GSH kinetics behind FLASH sparing in a
+two-compartment well-mixed ODE system \cite{zhang2025flash} --- a chemical-field kinetics
+template this framework's ROS layer would inherit, once such a layer exists.
+
+\subsection{The transport bridge}
+
+RADCELL couples Geant4 (with Geant4-DNA low-energy physics) to CompuCell3D: tumor cellular
+geometry from the CPM is exported to Geant4, dose and DNA-damage distributions are
+transported through it, and the results are fed back per cell \cite{liu2021radcell}. This
+is the existence proof that a CPM$\leftrightarrow$transport bridge can be built, and our
+own OpenMC--CPM coupling validated the same bridge class for photons with conservation and
+orientation checks across the exchange boundary \cite{kinder2026biofilm}. Both bridges
+were exercised on synthetic geometries; neither has been driven by a measured
+histology-initialized activity map.
+
+\subsection{The verified gap}
+
+Ryhiner et al.\ set out the digital-twin roadmap for radiopharmaceutical therapy and name
+patient-specific biological response as a required, still-missing component
+\cite{ryhiner2025tdt}. The claim of this manuscript is narrower and was tested rather than
+asserted:
+
+\begin{quote}
+\textbf{Gap claim.} No published study couples a \emph{measured} intratumoral activity
+distribution to a \emph{spatially explicit, cell-resolved} response model for PRRT in which
+dose-driven cell dynamics feed back into the subsequent activity distribution.
+\end{quote}
+
+A candidate would have to satisfy three criteria simultaneously. (a) A measured or realistic heterogeneous activity
+input, not an assumed-uniform source. (b) A cell-resolved spatial model --- CPM, individual-based model, or cellular
+automaton --- not a continuum PDE/ODE system and not a dosimetry-only pipeline. (c) A closed response loop, where dose
+changes the cell population and the changed population changes the next dose calculation. We
+searched EuropePMC, PubMed Central, OpenAlex, Crossref, CORE, bioRxiv, medRxiv, arXiv, and
+alphaXiv with PRRT- and model-class-keyed query vectors (September 2026), triaged all
+returned records, and characterized each near-miss in full text. PubMed returned a parse
+error on the unified query and arXiv rate-limited two queries; EuropePMC, which indexes
+PubMed full text, carried that coverage, and alphaXiv discovery covered arXiv content. No
+candidate satisfies all three criteria. Table~\ref{tab:nearmiss} catalogues the closest
+studies and the criterion each fails.
+
+\begin{table}[t]
+\centering
+\caption{Near-miss studies and the refutation criterion each fails. Criteria: (a)
+measured heterogeneous activity input; (b) cell-resolved spatial model; (c) closed
+response loop into the next activity distribution.}
+\label{tab:nearmiss}
+\small
+\begin{tabularx}{\linewidth}{@{}l X c c c@{}}
+\toprule
+Study & What it does & (a) & (b) & (c) \\
+\midrule
+\cite{mellhammar2023} & Measured-source MC dosimetry; cell-weighted dose and TCP &
+yes & no & no \\
+\cite{sahota2025} & Same-section autoradiography--histology 3D activity volume &
+yes & no & no \\
+\cite{tamborino2025} & Image-based multicellular dosimetry in clusters &
+no & partly & no \\
+\cite{larouze2023} & Heterogeneous targeting in a fixed 19-cell cluster &
+no & partly & no \\
+\cite{liu2025pbt} & Agent-based post-irradiation cell-state transitions &
+no & yes & no \\
+\cite{cordoni2026} & Agent-based GSM$^2$ extension, fractionation on a lattice &
+no & yes & no \\
+\cite{liu2021radcell} & Geant4--CC3D bridge, synthetic geometry &
+no & yes & no \\
+\cite{kinder2026biofilm} & CPM--OpenMC one-way coupling, validated, synthetic geometry &
+no & yes & no \\
+\cite{albanese2026} & Oxygenation and phenotype adaptation, trait-structured PDE &
+no & no & no \\
+\cite{mvogo2026} & Radionuclide dose-rate comparison, ODE/DDE stem-cell model &
+no & no & no \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+The pieces exist. The loop has never been closed.
+
+% ---- 3. Computational Framework ------------------------------
+\section{Computational Framework}\label{sec:framework}
+
+\subsection{Scope and execution state}
+
+The framework is a specification. Nothing in Section~\ref{sec:framework} has been executed
+as a coupled simulation in this preprint, and no result of this manuscript depends on the
+loop running. What has been executed and validated, in our prior work, is the one-way
+transport foundation: geometry export from a CPM, Monte Carlo transport, dose conversion,
+and cell-level attribution, with conservation and orientation checks across the exchange
+boundary \cite{kinder2026biofilm}. The response layer and activity feedback specified here
+are the additions that make the loop closable, and Section~\ref{sec:params} states which
+of their parameters are measured, which are literature priors, and which are declared
+modelling choices.
+
+\subsection{Notation}
+
+Positions $\bm{x} \in \Omega \subset \mathbb{R}^3$ label voxels of the reconstructed
+tissue volume (the radiohistology product). Cells are indexed $i$, occupy voxel sets
+$C_i \subset \Omega$, and carry state $(\phi_i, e_i, V_i, S_i)$: cell-cycle phase,
+SSTR2 expression level, volume, and surface. Time $t$ is biological time; treatment
+cycles are indexed $k$. Activity per voxel at the start of cycle $k$ is $A^{(k)}_j$
+[Bq], with time-integrated activity $\tilde{A}^{(k)}_j = \int A^{(k)}_j(t)\,dt$ [Bq\,s].
+
+\subsection{Radiohistology initialization}\label{sec:init}
+
+The model is initialized from three registered, same-section or same-volume maps:
+
+\begin{enumerate}
+\item \textbf{Activity} $A_j$, from quantitative same-section autoradiography with
+histological context, decay-corrected and normalized per the workflow of Sahota et al.\
+\cite{sahota2025}, or from serial-section autoradiography registered to histology per
+Mellhammar et al.\ \cite{mellhammar2023}.
+\item \textbf{Cell density} $n_j$ and nuclear positions, from hematoxylin-eosin
+segmentation, giving viable-cell, necrotic, and stromal masks
+\cite{mellhammar2023,sahota2025}.
+\item \textbf{Expression} $e_i$, from SSTR2 immunohistochemistry, mapped to the cell
+lattice; where IHC is unavailable, the initialization draws $e_i$ from a lognormal
+distribution whose parameters are declared priors (Section~\ref{sec:params}).
+\end{enumerate}
+
+Cells are placed by sampling the nuclear-position map; each cell's initial CPM volume is
+grown to its target volume under the Potts dynamics before cycle 1 begins. The
+registration step is not specified here beyond its inputs and its tolerance: elastic
+registration of histology to the tissue volume follows established practice
+\cite{albers2021}, and a misregistration tolerance enters the uncertainty budget rather
+than the dynamics.
+
+\subsection{Cell-resolved dosimetry through the evolving geometry}
+
+For cycle $k$, the absorbed dose to cell $i$ is split into self- and cross-terms:
+\begin{equation}
+\dot{D}^{(k)}_i = \underbrace{S_{\text{self}}(e_i)\,\tilde{a}^{(k)}_i}_{\text{self}}
+\;+\; \sum_{j \neq \text{cells}(i)} S(\bm{r}_i \leftarrow \bm{r}_j)\,
+\tilde{A}^{(k)}_j ,
+\label{eq:doserate}
+\end{equation}
+where $\tilde{a}^{(k)}_i$ is the time-integrated activity in cell $i$ and $S$-values are
+computed either by Monte Carlo electron transport through the exported geometry ---
+which requires an electron-transport code of the Geant4/GATE class, validated for
+$^{177}$Lu beta spectra against EGSnrc to 1.2--1.5\% \cite{perrot2014} --- or by
+pre-computed cellular S-values for the self term \cite{tamborino2020}, with $^{177}$Lu
+betas of 497~keV endpoint and mean penetration near 0.2~mm in tissue
+\cite{ijms2026nanoparticle}. The OpenMC path inherited from our prior work transports
+photons and neutrons only \cite{kinder2026biofilm}; it cannot serve as the reference
+arm for the beta dose, and the convergence study of Section~\ref{sec:params} must
+name its reference code accordingly. For $^{225}$Ac chains the
+alpha range of 50--100~$\mu$m makes the self- and near-neighbour terms dominate
+\cite{sahota2025}. The transport is executed on the \emph{current} cycle geometry; the
+activity map $A^{(k)}$ is attached to voxels, not cells, so cell motion and death between
+transport calls are handled by re-attribution at the next call.
+
+Equation~\ref{eq:doserate} is a specification, not a method: the numerical choice between
+Monte Carlo re-transport per cycle and cached dose-point-kernel lookups is a convergence
+question that Section~\ref{sec:params} assigns to the uncertainty budget, and the
+specification refuses to fix it without that study.
+
+\subsection{Response: protracted-exposure survival kinetics}
+
+PRRT delivers dose at a low rate over days, so repair during irradiation cannot be
+ignored. Cell $i$'s survival to the end of cycle $k$ is
+\begin{equation}
+\mathrm{SF}^{(k)}_i = \exp\!\left( -\alpha_{\phi}\, D^{(k)}_i
+\;-\; \beta_{\phi}\, G(T)\, \bigl(D^{(k)}_i\bigr)^2 \right),
+\label{eq:sf}
+\end{equation}
+with the Lea--Catcheside factor for a constant dose rate over active duration $T$ and
+monoexponential repair of half-time $T_{\text{rep}}$,
+\begin{equation}
+G(T) = \frac{2}{(\mu T)^2}\left( \mu T - 1 + e^{-\mu T} \right),
+\qquad \mu = \ln 2 / T_{\text{rep}} .
+\label{eq:lea}
+\end{equation}
+Radiosensitivity $\alpha_{\phi}$ and $\beta_{\phi}$ carry a cell-cycle-phase dependence
+(G2/M most sensitive), and $\alpha_{\phi}$ is further modulated by oxygenation where an
+oxygen map is available; both dependences are literature priors with declared ranges
+(Section~\ref{sec:params}). Death is realized in the CPM as a stochastic transition at
+mitosis entry: a cell that has accumulated cycle-$k$ dose attempts division with
+probability $\mathrm{SF}^{(k)}_i$ and otherwise enters a dying state, is cleared by
+volume resorption, and leaves the lattice. This places lethality at mitotic catastrophe,
+consistent with the proliferative-dependence of radiation death in spheroid and solid
+tumor models, and it couples response to the growth dynamics the CPM already carries.
+
+\subsection{The heritable expression trait and the closed loop}
+
+SSTR2 expression $e_i$ is a continuous heritable trait. Uptake attaches activity to cells
+in proportion to expression:
+\begin{equation}
+A^{(k+1)}_j \;\propto\; \rho^{(k+1)}_j \cdot \bar{e}^{(k+1)}_j ,
+\label{eq:feedback}
+\end{equation}
+where $\rho^{(k+1)}_j$ is the viable-cell density and $\bar{e}^{(k+1)}_j$ the mean
+expression of the cells occupying voxel $j$ at the start of cycle $k{+}1$, normalized to
+the administered activity and the measured whole-lesion time-integrated activity.
+Equation~\ref{eq:feedback} is the loop-closing term and is a \emph{declared modelling
+choice}, not a measurement: it encodes the first-order approximation that uptake follows
+receptor density, and it is the point of the model. Because high-$e$ cells receive more
+cross-dose (Eq.~\ref{eq:doserate}), die more (Eq.~\ref{eq:sf}), and are therefore
+under-represented in $\bar{e}^{(k+1)}$, the population's expression distribution drifts
+down under successive cycles --- the retreatment-selection mechanism observed clinically
+\cite{feijtel2021,fransson2024} --- and the next cycle's dose follows it. Daughter cells
+inherit $e$ with a small perturbation of declared variance; the perturbation is a
+standing variation parameter, and Section~\ref{sec:params} fixes its scan range.
+
+With Eq.~\ref{eq:feedback} removed, the model reduces to the open-loop configuration
+(measured $A^{(k)}$ replayed for every cycle), which is the natural control experiment:
+the divergence between the open-loop and closed-loop trajectories \emph{is} the
+retreatment-selection prediction.
+
+\subsection{Potts dynamics and the Hamiltonian}
+
+The tissue mechanics are standard Glazier--Graner--Hogeweg dynamics with Hamiltonian
+\begin{equation}
+H = \sum_i \lambda_V \bigl(V_i - V_i^{\text{target}}\bigr)^2
+  + \sum_i \lambda_S \bigl(S_i - S_i^{\text{target}}\bigr)^2
+  + \sum_{\text{nn}} J\bigl(\tau_i, \tau'_j\bigr)\bigl(1 - \delta_{\sigma_i \sigma_j}\bigr)
+  + H_{\text{growth}},
+\label{eq:hamiltonian}
+\end{equation}
+over nearest-neighbour copy attempts with Metropolis acceptance; cell types $\tau$
+include viable tumor cells by clone, dying cells, necrotic debris, and stroma.
+$H_{\text{growth}}$ drives target volume toward doubling over the clone-specific
+doubling time, at which point division is attempted and Eq.~\ref{eq:sf} is applied.
+No chemotaxis, adhesion-modification, or force-coupling to dose is included; the
+specification adds no mechanism beyond what the response layer requires, and every
+addition would have to be declared with its provenance as these are.
+
+\subsection{What the loop measures}
+
+The experimental outputs of the specification, once executed, are: (i) the
+divergence of TCP between the uniform-dose assumption and the histology-initialized
+heterogeneous reality, per lesion; (ii) the trajectory of the expression distribution
+$\{e_i\}$ over simulated cycles, and the conditions under which low-expression clones
+come to dominate; (iii) the sensitivity of (i) and (ii) to the declared choices
+(Eq.~\ref{eq:feedback} proportionality, uptake-lognormal spread, death timing). Output
+(i) is the model-side answer to the voxel-dose-versus-cell-dose gap demonstrated by
+Mellhammar et al.\ \cite{mellhammar2023}; output (ii) is the model-side answer to the
+retreatment-failure observations \cite{feijtel2021,fransson2024}; output (iii) is what
+makes the other two publishable rather than anecdotal.
+
+% ---- 4. Parameter provenance ---------------------------------
+\section{Parameter Provenance}\label{sec:params}
+
+The parameters are not uniform in provenance and are not reported as though they were.
+Table~\ref{tab:provenance} separates them. Three rules govern the table: a measured
+input is only a quantity read off the radiohistology product for the simulated lesion; a
+literature prior carries a citation and an adopted range but was not measured for this
+system; a declared modelling choice is a specification decision this manuscript makes
+without external evidence and must be scanned, not fixed. No parameter is fitted to any
+outcome of the model itself; the framework is explicitly non-calibrating in the sense of
+our prior preprint \cite{kinder2026biofilm}.
+
+\begin{table}[t]
+\centering
+\caption{Parameter provenance. M = measured input; L = literature prior; D = declared
+modelling choice. Ranges for L and D entries are adoption or scan ranges, not fits.}
+\label{tab:provenance}
+\small
+\begin{tabularx}{\linewidth}{@{}l l X l@{}}
+\toprule
+Quantity & Class & Source / justification & Ref \\
+\midrule
+Activity map $A^{(1)}_j$ & M & Same-section autoradiography, decay-corrected &
+\cite{sahota2025,mellhammar2023} \\
+Cell density / masks $n_j$ & M & H+E segmentation of the same volume &
+\cite{mellhammar2023} \\
+SSTR2 map (per-cell $e_i$) & M$|$D & IHC where available; lognormal draw otherwise &
+\cite{feijtel2021} \\
+$S$-values (self term) & L & Cellular dosimetry, measured morphologies &
+\cite{tamborino2020} \\
+$^{177}$Lu spectrum / ranges & L & Decay data; mean $\beta$ range $\approx 0.2$~mm &
+\cite{ijms2026nanoparticle} \\
+$^{225}$Ac alpha range & L & 50--100~$\mu$m chain alphas & \cite{sahota2025} \\
+$\alpha_{\phi}, \beta_{\phi}$ (NET cells) & L & Protracted LQ for neuroendocrine lines &
+\cite{tamborino2025} \\
+Repair half-time $T_{\text{rep}}$ & L & LQ fits under PRRT exposure &
+\cite{tamborino2025} \\
+Oxygen effect on $\alpha$ & L & Where an oxygen map exists; else omitted &
+--- \\
+Uptake $\propto e_i$ (Eq.~\ref{eq:feedback}) & D & First-order binding approximation &
+--- \\
+Uptake lognormal spread $\sigma_e$ & D & Scan range declared &
+\cite{feijtel2021,fransson2024} \\
+Expression drift at division & D & Standing variation; scan range declared &
+--- \\
+Misregistration tolerance & D & Enters uncertainty budget, not dynamics &
+\cite{albers2021} \\
+Transport caching vs.\ re-transport & D & Study complete: DPK inadmissible at
+boundaries (cell p95 = 23.8\%); full re-transport required & \cite{kinder2026biofilm} \\
+CPM $\lambda_V, \lambda_S, J$ & L$|$D & Priors from CPM literature; final values
+declared & --- \\
+\bottomrule
+\end{tabularx}
+\end{table}
+
+Two entries deserve their own sentence. The uptake proportionality
+(Eq.~\ref{eq:feedback}) is the load-bearing declared choice: it is what makes the loop
+close, it is not directly measured for a cell population in vivo, and every conclusion of
+the executed model must be stated conditional on it. The SSTR2 map is the one quantity
+that can be measured per-lesion today; where it is measured, the model's initialization is
+fully empirical, and where it is drawn, the initialization is a declared prior and the
+sensitivity study is mandatory.
+
+% ---- 5. Declared boundaries ----------------------------------
+\section{Declared Boundaries}\label{sec:boundaries}
+
+The model's phenotype boundary is selection under heterogeneous dose. It can test whether
+measured heterogeneity, transported realistically and responded to with protracted LQ
+kinetics, drives the expression distribution toward the low-SSTR2 clones that
+retreatment failure implicates \cite{feijtel2021,fransson2024}. It cannot test:
+
+\begin{itemize}
+\item \textbf{Immune response.} No immune cell type is in the state space. PRRT's immunological interactions are
+outside the model.
+\item \textbf{Bystander signalling.} All dose is transported; no unirradiated cell
+receives a signal from an irradiated neighbour.
+\item \textbf{Vascular remodelling and pharmacokinetics.} The activity map is an input
+per cycle; the model does not compute it from vasculature, and inter-cycle changes enter
+only through Eq.~\ref{eq:feedback}.
+\item \textbf{Electron transport.} The inherited one-way transport path (OpenMC) moves
+photons and neutrons, not primary electrons \cite{kinder2026biofilm}. Every beta-dose
+reference calculation therefore requires a Geant4/GATE-class electron code; a dose-point
+kernel cached from such a code is the approximation under test, never the ground truth.
+\item \textbf{Sub-cellular dose.} Dose is attributed to cells, not nuclei; the
+S-value literature shows nuclear dose depends on subcellular source location
+\cite{tamborino2020}, so the model inherits that as declared uncertainty, not resolved
+physics.
+\item \textbf{ROS chemistry.} No reactive-oxygen-species field is specified. The FLASH
+kinetics literature \cite{zhang2025flash} is the template a future chemistry layer would
+adapt; until it exists, the model speaks only through LQ response.
+\item \textbf{Patient-specific prediction.} Until every D-class parameter is either
+measured or bounded by a sensitivity study, no output is a prediction about a patient.
+The model predicts relative divergence between assumptions, not absolute response.
+\end{itemize}
+
+Two thresholds are permanently unset, following the rule that a prospective decision
+parameter must never be chosen from the data that would certify it
+\cite{kinder2026biofilm}: no clinical action threshold on TCP divergence, and no
+expression level below which a clone is declared resistant. The model may compute such
+quantities; it may not recommend them.
+
+% ---- 6. Conclusion -------------------------------------------
+\section{Conclusion}
+
+This preprint specifies a closed-loop, histology-initialized, cell-resolved model of PRRT response in neuroendocrine
+tumors. It verifies by systematic search that no published work couples measured activity distributions to spatially
+explicit selection dynamics. It separates every parameter by provenance so the specification cannot be mistaken for a
+calibration. It reports no simulation results. The one-way transport foundation is
+inherited from validated prior work \cite{kinder2026biofilm}; the response layer and the
+activity-feedback term are specified here for the first time, and the near-miss catalogue
+(Table~\ref{tab:nearmiss}) states exactly which existing studies each piece builds on.
+
+What is required before the loop's first output can be believed: a measured
+activity-plus-histology-plus-IHC volume for at least one lesion (inputs that exist today
+\cite{sahota2025,mellhammar2023}), the transport-caching convergence study, the declared
+sensitivity scans, and a demonstration that the open-loop control reproduces the
+voxel-versus-cell TCP divergence already established for static dosimetry
+\cite{mellhammar2023}. What is required before any clinical claim: those, plus an
+independent measurement of the uptake--expression relation that Eq.~\ref{eq:feedback}
+currently declares. The framework is offered as a reproducible specification for exactly
+that programme.
+
+Three studies in that programme are now executed, each against a pre-declared
+protocol with negative-control gates, and each committed with its protocol,
+code, and verdict.
+
+Study~1 (transport caching) tested the cheap shortcut. The cached
+dose-point kernel was applied to the hashed synthetic geometry by
+convolution, with the kernel's dose spread evaluated by fast-Fourier-
+transform (FFT) convolution. Against a 128M-decay Geant4 re-transport
+reference it fails the pre-declared cell-level criterion of 2\%:
+cell p95 $= 23.8\%$. The failure is an escape-surface shell one to two
+voxels thick, caused by the convolution's infinite-medium assumption.
+Every treatment cycle therefore re-transports.
+
+Study~2 (open-loop response) verified the response layer. The protracted
+linear-quadratic kinetics of Eq.~\ref{eq:sf} with the Lea--Catcheside
+factor of Eq.~\ref{eq:lea}, applied to the validated dose field, reproduces
+the Mellhammar tumor-control divergence at equal total dose. The mechanism
+is the inequality of Jensen, the convexity bound on a mean, acting on the
+convex region of the protracted survival function. The divergence
+exceeds the transport-noise floor by three orders of magnitude.
+
+Study~3 (closed loop) closed the loop. Four simulated treatment cycles
+applied death at mitosis and re-uptake proportional to the heritable
+expression trait. The population's mean log-expression falls by $0.48$.
+An open-loop control that freezes the activity map falls only $0.19$.
+The selection contrast is the model-side reproduction of the
+retreatment-failure pattern. It compounds per cycle only when the loop
+is closed.
+
+% ---- References ----------------------------------------------
+\begin{thebibliography}{20}
+\small
+
+\bibitem{mellhammar2023} Mellhammar, E.; Dahlbom, M.; Vilhelmsson-Timmermand, O.; Strand, S. Tumor Control Probability and Small-Scale Monte Carlo Dosimetry: Effects of Heterogenous Intratumoral Activity Distribution in Radiopharmaceutical Therapy. \textit{Journal of Nuclear Medicine} \textbf{2023}, \textit{64}, 1632-1637. doi:10.2967/jnumed.123.265523.
+
+\bibitem{tamborino2025} Tamborino, G.; Engbers, P.; de Wolf, T. H.; Reuvers, T. G. A.; Verhagen, R.; Konijnenberg, M.; et al. Establishing in vitro dosimetric models and dose--effect relationships for $^{177}$Lu-DOTATATE in neuroendocrine tumors. \textit{Journal of Nuclear Medicine} \textbf{2025}, \textit{66}, 1291--1298. doi:10.2967/jnumed.125.269470.
+
+\bibitem{larouze2023} Larouze, A.; Alcocer-\'Avila, M.; Morgat, C.; Champion, C.; Hindi\'e, E. Membrane and nuclear absorbed doses from $^{177}$Lu and $^{161}$Tb in tumor clusters: effect of cellular heterogeneity and potential benefit of dual targeting --- a Monte Carlo study. \textit{Journal of Nuclear Medicine} \textbf{2023}, \textit{64}, 1619--1624. doi:10.2967/jnumed.123.265509.
+
+\bibitem{perrot2014} Perrot, Y.; Degoul, F.; Auzeloux, P.; Bonnet, M.; Cachin, F.; Chezal, J. M.. Internal dosimetry through GATE simulations of preclinical radiotherapy using a melanin-targeting ligand. \textit{Physics in Medicine \& Biology} \textbf{2014}, \textit{59}, 2183--2198. doi:10.1088/0031-9155/59/9/2183.
+
+\bibitem{tamborino2020} Tamborino, G.; De Saint-Hubert, M.; Struelens, L.; Seoane, D. C.; Ruigrok, E. A. M.; Aerts, A.; et al.. Cellular dosimetry of [$^{177}$Lu]Lu-DOTA-[Tyr$^3$]octreotate radionuclide therapy: the impact of modeling assumptions on the correlation with in vitro cytotoxicity. \textit{EJNMMI Physics} \textbf{2020}, \textit{7}, 12. doi:10.1186/s40658-020-0276-5.
+
+\bibitem{sahota2025} Sahota, S.; Quirindongo, K. A.; Piccolo, J.; Chhabra, A.; Zaid, N.; Deveauxbray, S.; et al.. Enhanced activity localization and microscale dosimetry in alpha-emitter radiopharmaceutical therapy using integrated autoradiography and histological imaging. \textit{Scientific Reports} \textbf{2025}, \textit{15}. doi:10.1038/s41598-025-09277-4.
+
+\bibitem{feijtel2021} Feijtel, D.; Doeswijk, G. N.; Verkaik, N. S.; Haeck, J. C.; Chicco, D.; Angotti, C.; et al.. Inter and intra-tumor somatostatin receptor 2 heterogeneity influences peptide receptor radionuclide therapy response. \textit{Theranostics} \textbf{2021}, \textit{11}. doi:10.7150/thno.51215.
+
+\bibitem{fransson2024} Park, S. W. S.; Fransson, S.; Sundquist, F.; Nilsson, J. N.; Grybäck, P.; Wessman, S.; et al.. Heterogeneous SSTR2 target expression and a novel KIAA1549::BRAF fusion clone in a progressive metastatic lesion following $^{177}$Lutetium-DOTATATE molecular radiotherapy in neuroblastoma: a case report. \textit{Frontiers in Oncology} \textbf{2024}, \textit{14}, 1408729. doi:10.3389/fonc.2024.1408729.
+
+\bibitem{mvogo2026} Mvogo, A.; Essongo, F. E.; Hubert Ben-Bolie, G.. Cancer treatment by radioimmunotherapy: insights from a dynamical model of cancer stem cells and hypoxia effects. \textit{Scientific Reports} \textbf{2026}, \textit{16}, 16975. doi:10.1038/s41598-026-47796-w.
+
+\bibitem{liu2021radcell} Liu, R.; Higley, K. A.; Swat, M. H.; Chaplain, M. A. J.; Powathil, G. G.; Glazier, J. A.. Development of a coupled simulation toolkit for computational radiation biology based on Geant4 and CompuCell3D. \textit{Physics in Medicine \& Biology} \textbf{2021}, \textit{66}, 045026. doi:10.1088/1361-6560/abd4f9.
+
+\bibitem{albers2021} Albers, J.; Svetlove, A.; Alves, J.; Kraupner, A.; di Lillo, F.; Markus, M. A.; et al. Elastic transformation of histological slices allows precise co-registration with microCT data sets for a refined virtual histology approach. \textit{Scientific Reports} \textbf{2021}, \textit{11}. doi:10.1038/s41598-021-89841-w.
+
+\bibitem{ijms2026nanoparticle} Finogenova, Y.; Lipengolts, A.; Klementyeva, O.; Shpakova, K.; Skribitsky, V.; Grigorieva, E.; et al. Linking in vivo imaging to therapeutic outcome with $^{131}$I, $^{177}$Lu, $^{188}$Re nanoparticles. \textit{International Journal of Molecular Sciences} \textbf{2026}, \textit{27}, 7856. doi:10.3390/ijms27177856.
+
+\bibitem{su2023ppgl} Su, D.; Yang, H.; Qiu, C.; Chen, Y.. Peptide receptor radionuclide therapy in advanced Pheochromocytomas and Paragangliomas: a systematic review and meta-analysis. \textit{Frontiers in Oncology} \textbf{2023}, \textit{13}, 1141648. doi:10.3389/fonc.2023.1141648.
+
+\bibitem{liu2025pbt} Liu, R.; H. Swat, M.; A. Glazier, J.; Lei, Y.; Zhou, S.; A. Higley, K.. Developing an Agent-Based Mathematical Model for Simulating Post-Irradiation Cellular Response: A Crucial Component of a Digital Twin Framework for Personalized Radiation Treatment. \textbf{2025}. arXiv:2501.11875.
+
+\bibitem{albanese2026} Albanese, F.; Chiari, G.; Edoardo Delitala, M.. Oxygenation and spatial heterogeneity shape radiotherapy protocol ranking through phenotypic adaptation. \textbf{2026}. arXiv:2606.04004.
+
+\bibitem{cordoni2026} G. Cordoni, F.; Battestini, M.; Missiaggia, M.. A stochastic agent-based extension of the GSM2 model for particle therapy: cell-cycle dynamics, dose-rate dependence, and fractionation effects. \textbf{2026}. arXiv:2604.27630.
+
+\bibitem{zhang2025flash} Zhang, Y.; Huang, C.; Hu, A.; Wang, Y.; Zhu, Y.; Zhou, W.; et al. Unraveling the Redox Mechanisms Underlying FLASH Radiotherapy: Critical Dose Thresholds and NRF2-Driven Tissue Sparing. \textbf{2026}. arXiv:2508.20510.
+
+\bibitem{ryhiner2025tdt} Ryhiner, M.; Song, Y.; Saboury, B.; Glatting, G.; Rahmim, A.; Shi, K.. Mathematical and Computational Nuclear Oncology: Toward Optimized Radiopharmaceutical Therapy via Digital Twins. \textbf{2025}. arXiv:2511.03755.
+
+\bibitem{kinder2026biofilm} Kinder, H.; Faulkner, B.. Modeling radioresistance and radiotropic fitness in multispecies biofilms: a computational framework, implementation audit, and one-way radiation-transport foundation. \textbf{2026}.
+
+\end{thebibliography}
+
+\end{document}

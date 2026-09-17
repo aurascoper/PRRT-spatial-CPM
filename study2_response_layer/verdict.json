@@ -1,0 +1,164 @@
+{
+  "protocol": "study2_response_layer/PROTOCOL.md v1.0",
+  "verdict": "PASS-DIVERGENCE",
+  "reason": "all pre-declared criteria (a)-(d) hold; all gates G1-G8 passed",
+  "criteria": {
+    "a_direction_primary": true,
+    "b_significance_vs_mc_noise": true,
+    "c_direction_all_levels_both_nclon": true,
+    "d_monotonicity": true
+  },
+  "gates_failed": [],
+  "declared_parameters": {
+    "alpha_Gy^-1": 0.24,
+    "beta_Gy^-2": 0.06,
+    "T_rep_h": 1.5,
+    "T_active_h": 96.0,
+    "mu_h^-1": 0.46209812037329684,
+    "G_96h": 0.04406792658002346,
+    "1/G_96h": 22.69224076572081,
+    "N_clon_scan": [
+      100.0,
+      1000.0
+    ],
+    "dose_scan_Gy": [
+      2.0,
+      5.0,
+      10.0,
+      20.0,
+      40.0
+    ],
+    "dose_primary_Gy": 10.0,
+    "noise_sigma": 0.007112462006079028,
+    "ref_noise_p95": 0.0117,
+    "seed_ensemble": 20260919,
+    "n_ensemble": 200,
+    "source": "Tamborino 2025 JNM 66:1291, Table 1 (EBRT NCI-H69 LQ fit); T_rep declared prior, consistency-gated (G5d)"
+  },
+  "dose_field_descriptors": {
+    "n_viable": 13978,
+    "dose_CV_viable": 0.2430158888106541,
+    "dose_p95_over_mean": 1.371305355813626,
+    "E_mean_MeV_per_decay_viable": 6.541398342057673e-06,
+    "geometry_sha256": "a6883b84a577dd5db888c9d4292cf68897a68d840b64a427061bc70a2d60a170",
+    "ref_bin_sha256_pinned": "8ca193775638faff57f0cc21e8f6ded3e257834dd8f139472e48682b638b9110",
+    "ref_decays": 128000000
+  },
+  "results_per_level": {
+    "D2_N100": {
+      "ln_TCP_het": -861637.5182895828,
+      "ln_TCP_uniform": -855835.8114273443,
+      "N_s_het": 861637.5182895828,
+      "N_s_uniform": 855835.8114273443,
+      "TCP_het": 0.0,
+      "TCP_uniform": 0.0,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D2_N1000": {
+      "ln_TCP_het": -8616375.182895828,
+      "ln_TCP_uniform": -8558358.114273444,
+      "N_s_het": 8616375.182895828,
+      "N_s_uniform": 8558358.114273444,
+      "TCP_het": 0.0,
+      "TCP_uniform": 0.0,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D5_N100": {
+      "ln_TCP_het": -413350.8436614804,
+      "ln_TCP_uniform": -394079.6164818323,
+      "N_s_het": 413350.8436614804,
+      "N_s_uniform": 394079.6164818323,
+      "TCP_het": 0.0,
+      "TCP_uniform": 0.0,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D5_N1000": {
+      "ln_TCP_het": -4133508.436614804,
+      "ln_TCP_uniform": -3940796.1648183228,
+      "N_s_het": 4133508.436614804,
+      "N_s_uniform": 3940796.1648183228,
+      "TCP_het": 0.0,
+      "TCP_uniform": 0.0,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D10_N100": {
+      "ln_TCP_het": -122279.73006677776,
+      "ln_TCP_uniform": -97343.62959958712,
+      "N_s_het": 122279.73006677776,
+      "N_s_uniform": 97343.62959958712,
+      "TCP_het": 0.0,
+      "TCP_uniform": 0.0,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D10_N1000": {
+      "ln_TCP_het": -1222797.3006677777,
+      "ln_TCP_uniform": -973436.2959958712,
+      "N_s_het": 1222797.3006677777,
+      "N_s_uniform": 973436.2959958712,
+      "TCP_het": 0.0,
+      "TCP_uniform": 0.0,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D20_N100": {
+      "ln_TCP_het": -12861.73862159622,
+      "ln_TCP_uniform": -3994.924231165912,
+      "N_s_het": 12861.73862159622,
+      "N_s_uniform": 3994.924231165912,
+      "TCP_het": 0.0,
+      "TCP_uniform": 0.0,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D20_N1000": {
+      "ln_TCP_het": -128617.3862159622,
+      "ln_TCP_uniform": -39949.242311659116,
+      "N_s_het": 128617.3862159622,
+      "N_s_uniform": 39949.242311659116,
+      "TCP_het": 0.0,
+      "TCP_uniform": 0.0,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D40_N100": {
+      "ln_TCP_het": -356.1965041002603,
+      "ln_TCP_uniform": -1.3769751572113382,
+      "N_s_het": 356.1965041002603,
+      "N_s_uniform": 1.3769751572113382,
+      "TCP_het": 2.022198556436072e-155,
+      "TCP_uniform": 0.25234069072396087,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    },
+    "D40_N1000": {
+      "ln_TCP_het": -3561.965041002603,
+      "ln_TCP_uniform": -13.769751572113384,
+      "N_s_het": 3561.965041002603,
+      "N_s_uniform": 13.769751572113384,
+      "TCP_het": 0.0,
+      "TCP_uniform": 1.046822081617418e-06,
+      "direction_het_lt_unif": true,
+      "nclon_invariance_ok": true
+    }
+  },
+  "noise_ensemble": {
+    "gap_Ns_mean": 249.5592512110882,
+    "gap_Ns_std": 0.10698815826831429,
+    "gap_det_deterministic": 249.36100467190641,
+    "ratio_to_2sigma": 1165.3673112426939,
+    "p2p5": 249.363686770994,
+    "p97p5": 249.74381977947826
+  },
+  "G_curve": {
+    "T=1h": 0.8622360396178723,
+    "T=6h": 0.477437092982887,
+    "T=24h": 0.16407643306553163,
+    "T=96h": 0.04406792658002346,
+    "T=360h": 0.011950188917789779
+  }
+}

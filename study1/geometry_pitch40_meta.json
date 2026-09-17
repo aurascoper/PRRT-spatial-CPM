@@ -1,0 +1,28 @@
+{
+ "pitch_um": 40.0,
+ "n_voxels_per_axis": 25,
+ "roi_mm": 1.0,
+ "seed_geometry": 20260916,
+ "seed_expression": 20260917,
+ "cell_diam_um": 12.0,
+ "cell_lattice_step_voxels": 1,
+ "volume_fractions_declared": {
+  "viable": 0.6,
+  "necrotic": 0.2,
+  "stroma": 0.2
+ },
+ "volume_fractions_realized": {
+  "viable": 0.704,
+  "necrotic": 0.105408,
+  "stroma": 0.190592
+ },
+ "n_cells": 13978,
+ "expr_lognormal": {
+  "mu": 0.0,
+  "sigma": 0.6
+ },
+ "mean_activity_bq_per_voxel": 1.0,
+ "activity_cv": 0.658196893050898,
+ "npz_sha256": "a6883b84a577dd5db888c9d4292cf68897a68d840b64a427061bc70a2d60a170",
+ "n": 25
+}

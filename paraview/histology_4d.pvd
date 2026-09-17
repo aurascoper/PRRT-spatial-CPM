@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<VTKFile type="Collection" version="0.1">
+  <Collection>
+    <DataSet part="1" file="hist4d_c1.vti"/>
+    <DataSet part="2" file="hist4d_c2.vti"/>
+    <DataSet part="3" file="hist4d_c3.vti"/>
+    <DataSet part="4" file="hist4d_c4.vti"/>
+  </Collection>
+</VTKFile>

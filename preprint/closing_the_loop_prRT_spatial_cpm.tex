@@ -461,6 +461,22 @@ Mellhammar et al.\ \cite{mellhammar2023}; output (ii) is the model-side answer t
 retreatment-failure observations \cite{feijtel2021,fransson2024}; output (iii) is what
 makes the other two publishable rather than anecdotal.
 
+\subsection{Data export architecture}
+
+Every executed study writes the spatial state at each treatment cycle as a
+regular voxel volume: cell identifier, tissue class, local activity,
+absorbed dose, survival fraction, and expression trait, one array per
+quantity, with the lattice spacing declared in the file metadata. The
+volumes are exchanged as a wrapper index over the per-cycle files, so the
+time dimension is navigable in standard scientific-visualization tooling.
+The format is a deliberate exchange architecture, not a visualization
+convenience: continuum field couplings attach to the same grid without
+re-layout. The level-set treatment of cell membranes
+\cite{shen2022diffuse} and the pressure-carrying tumor-growth system of
+\cite{li2026chns} are the declared targets such a coupling would follow.
+What the exported series contains is a time-dependent histology-dose state:
+no velocity or pressure field is computed, and none is exported.
+
 % ---- 4. Parameter provenance ---------------------------------
 \section{Parameter Provenance}\label{sec:params}
 
@@ -540,6 +556,12 @@ receives a signal from an irradiated neighbour.
 \item \textbf{Vascular remodelling and pharmacokinetics.} The activity map is an input
 per cycle; the model does not compute it from vasculature, and inter-cycle changes enter
 only through Eq.~\ref{eq:feedback}.
+\item \textbf{Interstitial flow and pressure.} No fluid field is specified
+and none is exported. Interstitial pressure enters the tumor-growth
+literature as an explicit continuum field \cite{li2026chns}. The natural
+extension treats cell boundaries as phase-field level sets coupled to an
+incompressible Navier--Stokes solver \cite{shen2022diffuse}. The exported
+per-cycle voxel arrays are the substrate such a coupling would consume.
 \item \textbf{Electron transport.} The inherited one-way transport path (OpenMC) moves
 photons and neutrons, not primary electrons \cite{kinder2026biofilm}. Every beta-dose
 reference calculation therefore requires a Geant4/GATE-class electron code; a dose-point
@@ -653,6 +675,10 @@ is closed.
 \bibitem{ryhiner2025tdt} Ryhiner, M.; Song, Y.; Saboury, B.; Glatting, G.; Rahmim, A.; Shi, K.. Mathematical and Computational Nuclear Oncology: Toward Optimized Radiopharmaceutical Therapy via Digital Twins. \textbf{2025}. arXiv:2511.03755.
 
 \bibitem{kinder2026biofilm} Kinder, H.; Faulkner, B.. Modeling radioresistance and radiotropic fitness in multispecies biofilms: a computational framework, implementation audit, and one-way radiation-transport foundation. \textbf{2026}.
+
+\bibitem{li2026chns} Li, C.; Lin, P.; Yu, H.; Zheng, H.. A Thermodynamically Consistent Cahn--Hilliard--Navier--Stokes Model for Tumor Growth. \textbf{2026}. arXiv:2608.06099.
+
+\bibitem{shen2022diffuse} Shen, L.; Lin, P.; Xu, Z.; Xu, S.. Thermodynamically Consistent Diffuse Interface Model for Cell Adhesion and Aggregation. \textbf{2022}. arXiv:2205.07190.
 
 \end{thebibliography}
 

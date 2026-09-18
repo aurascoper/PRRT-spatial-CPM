@@ -32,7 +32,8 @@ see each `PROTOCOL.md` amendment history).
 
 ```
 preprint/                 manuscript (LaTeX + PDF + bibliography data)
-study1/                   DPK vs Monte Carlo transport study
+study1/                   DPK vs Monte Carlo transport study, Geant4 app
+                          source (src/, CMakeLists.txt) and pitch-40 runs
 study2_response_layer/    open-loop LQ + Lea-Catcheside TCP verification
 study3_closed_loop/       4-cycle closed-loop selection with re-transport
 figures/                  Study-3 summary figures
@@ -74,13 +75,28 @@ Requirements: Python 3.12+ (numpy, scipy), Geant4 11.4.2 with
 RadioactiveDecay 6.1.2 (ENSDF), 24-thread CPU recommended.
 
 ```bash
-# Study 2 (minutes; needs study1's 128M dose field, see data/)
+# Transport app, used by Studies 1 and 3. It derives from the Geant4 example
+# examples/extended/radioactivedecay/rdecay02, which is not copied here.
+source study3_closed_loop/g4env.sh      # export GEANT4_PREFIX first if yours differs
+cmake -S study1 -B study1/build -DCMAKE_BUILD_TYPE=Release
+cmake --build study1/build -j           # produces study1/build/study1_app
+
+# Study 1 analysis (seconds; reads the committed pitch-40 runs in study1/runs/)
+python study1/final_analysis.py
+
+# Study 2 (minutes; needs the 128M-decay reference run, study1/runs/ref_p40_h3.bin)
 python study2_response_layer/study2_run.py
 
-# Study 3 (16 transport runs x ~75 s + dynamics; see g4env.sh for Geant4 env)
-source study3_closed_loop/g4env.sh
+# Study 3 (16 transport runs x ~75 s + dynamics). Every mode of study3_run.py,
+# the default `gates` included, invokes study1/build/study1_app.
 python study3_closed_loop/study3_run.py full
 ```
+
+`study1/runs/` holds the pitch-40 reference, kernel and DPK outputs the
+analysis scripts read. `study3_closed_loop/runs/` holds the four per-cycle dose
+fields and the cycle-4 activity map of the representative closed-loop
+replicate, which the figure and ParaView exporters read. Pitch-10 and pitch-20
+runs were never made, and `study1/analyze.py` reports them as missing input.
 
 The hashed fixed objects (`data/geometry_pitch40.npz`,
 sha256 `a6883b84...`) pin the synthetic lesion geometry: 25^3 voxels at

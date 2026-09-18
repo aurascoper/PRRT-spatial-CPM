@@ -1,7 +1,8 @@
 {
   "_source": "ISSUE SPEC response.growth_survival sections 2 and 3",
-  "_generated_by": "spec/check_vectors.py --emit",
+  "_maintained_by": "hand, verified by spec/check_vectors.py. No tool generates this file; an earlier version claimed spec/check_vectors.py --emit, which does not exist.",
   "_tolerance": "6 significant digits, relative, unless a field declares otherwise",
+  "_storage": "Every float vector is stored at 7 significant digits (%.6e) and asserted at 6. Storing more precision than is asserted leaves headroom. An earlier version stored some entries in %.6f, which gives only 5 significant digits for values below 1, under this same 6-digit declaration; see CORRECTION 4.",
 
   "constants": {
     "alpha_per_Gy": 0.24,
@@ -15,8 +16,8 @@
 
   "G_of_T": {
     "_note": "sig = significant digits the spec states this value to",
-    "24.0": {"value": 0.164076, "sig": 6},
-    "96.0": {"value": 0.044068, "sig": 6},
+    "24.0": {"value": 1.640764e-01, "sig": 6},
+    "96.0": {"value": 4.406793e-02, "sig": 6},
     "1e-09": {"value": 0.999999999846, "sig": 12},
     "1e-06": {"value": 0.999999845967, "sig": 12}
   },
@@ -39,13 +40,13 @@
   },
 
   "protraction_at_10Gy": {
-    "T_24h": 0.033896,
-    "T_96h": 0.069641
+    "T_24h": 3.389599e-02,
+    "T_96h": 6.964060e-02
   },
 
   "G_C_band": {
     "quantity": "1 / G(96 h)",
-    "value": 22.6922,
+    "value": 2.269224e+01,
     "low": 12.0,
     "high": 23.0
   }

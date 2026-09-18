@@ -110,9 +110,17 @@ GATES = [("G-N", gate_N), ("G-O", gate_O), ("G-P", gate_P), ("G-C", gate_C)]
 # ---- vector assertions ------------------------------------------------------
 
 def close(got, want, sig=6):
+    """True when `got` matches `want` to `sig` significant digits.
+
+    Half an ulp at the sig-th significant digit, so `5 * 10**-sig`. An earlier
+    version computed `10**(-sig + 1)`, which is a full decade looser than its own
+    name: at sig=6 it enforced five digits while every caller and the vectors
+    file's `_tolerance` string said six. One published vector, SF(10 Gy, 96 h)
+    stored as 0.069641, sat at 5.75e-6 relative and passed only on that slack.
+    """
     if want == 0.0 or got == 0.0:
         return got == want
-    return abs(got - want) <= abs(want) * 10.0 ** (-sig + 1)
+    return abs(got - want) <= abs(want) * 5.0 * 10.0 ** (-sig)
 
 
 def check_vectors():
@@ -151,13 +159,16 @@ def check_vectors():
     p = VECTORS["protraction_at_10Gy"]
     for T, key in ((24.0, "T_24h"), (96.0, "T_96h")):
         got = SF(10.0, G_of_T(T))
-        record(f"SF(10 Gy, T={T:g} h)", round(got, 6), p[key],
-               close(got, p[key]))
+        # FULL PRECISION ON PURPOSE. This line printed round(got, 6), so a value
+        # failing its tolerance displayed as identical to its expectation --
+        # `got 0.069641  want 0.069641` beside a FAIL. A diagnostic that hides
+        # the disagreement it reports is worse than none.
+        record(f"SF(10 Gy, T={T:g} h)", got, p[key], close(got, p[key]))
 
     print("G-C quantity:")
     band = VECTORS["G_C_band"]
     got = 1.0 / g96
-    record("1 / G(96 h)", round(got, 4), band["value"], close(got, band["value"]))
+    record("1 / G(96 h)", got, band["value"], close(got, band["value"]))
     return fails
 
 
@@ -189,6 +200,36 @@ def check_controls():
         print(f"  {'refused' if refused else 'ACCEPTED'} {name:<5} {why}")
         if not refused:
             fails.append(f"{name} accepted: {why}")
+    return fails + check_tolerance_control()
+
+
+def check_tolerance_control():
+    """The tolerance is itself a guard, so it gets a control too.
+
+    `close` once enforced five significant digits while claiming six, and the
+    only thing that exposed it was an external port. So prove both directions
+    here: a value stored at five digits must be refused, the same quantity at
+    seven must be accepted, and the old formula must be shown to accept the
+    five-digit value -- otherwise nothing proves the tightening changed anything.
+    """
+    true_sf96 = SF(10.0, G_of_T(96.0))       # 0.0696405992270619
+    five_sig = 0.069641                       # what the file once stored
+    seven_sig = 6.964060e-02                  # what it stores now
+
+    def old_close(got, want, sig=6):          # the defect, kept as the control
+        return abs(got - want) <= abs(want) * 10.0 ** (-sig + 1)
+
+    cases = [
+        ("five-digit value refused", not close(true_sf96, five_sig)),
+        ("seven-digit value accepted", close(true_sf96, seven_sig)),
+        ("old formula accepted the five-digit value", old_close(true_sf96, five_sig)),
+    ]
+    fails = []
+    print("tolerance control (the tolerance must bite, and must differ from the defect):")
+    for why, ok in cases:
+        print(f"  {'ok  ' if ok else 'FAIL'} {why}")
+        if not ok:
+            fails.append(f"tolerance: {why}")
     return fails
 
 

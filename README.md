@@ -7,7 +7,7 @@ geometry to Lu-177 radiotherapy transport and a heritable SSTR2 expression
 trait, and tests whether retreatment failure in neuroendocrine tumors is an
 emergent property of spatial heterogeneity.
 
-This work extends the one-way transport foundation of
+The framework extends the one-way transport foundation of
 [Kinder & Faulkner 2026, Biofilms](https://github.com/ffinkdevs/Biofilms)
 (the `coupling/` HDF5 snapshot -> transport -> `import_dose_field!`
 architecture) to the neuroendocrine, CPM, histological realm.
@@ -53,16 +53,17 @@ python3 spec/check_selection.py --controls   # gates G-S and G-D, reduced lattic
 ```
 
 The first asserts every vector in the spec and runs the four closed-form gates.
-The second runs five population gates on 2000 sites and 5 paired seeds: G-S and
-G-D from the spec, plus G-Q, G-B and G-H from its amendments.
+The second runs five population gates on 2000 sites and 5 paired seeds. G-S and
+G-D come from the spec. G-Q, G-B and G-H come from its amendments.
 
 `--controls` feeds each gate an implementation it must reject, so a gate that
 has stopped checking anything is visible rather than silently green. Both
 scripts use the standard library only.
 
-`spec/pr_checklist.md` is the acceptance criteria for a port's pull request:
-the declarations its description must state, the tests it must ship, and four
-hazards read from the Odin port at `ffinkdevs/Biofilms@4788dcd1`.
+`spec/pr_checklist.md` is the acceptance criteria for a port's pull request. It
+states the declarations the PR description must make and the tests it must
+ship. It also names four hazards read from the Odin port at
+`ffinkdevs/Biofilms@4788dcd1`.
 
 ## Reproducing
 

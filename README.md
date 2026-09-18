@@ -53,7 +53,8 @@ python3 spec/check_selection.py --controls   # gates G-S and G-D, reduced lattic
 ```
 
 The first asserts every vector in the spec and runs the four closed-form gates.
-The second runs the two population gates on 2000 sites and 5 paired seeds.
+The second runs five population gates on 2000 sites and 5 paired seeds: G-S and
+G-D from the spec, plus G-Q, G-B and G-H from its amendments.
 
 `--controls` feeds each gate an implementation it must reject, so a gate that
 has stopped checking anything is visible rather than silently green. Both

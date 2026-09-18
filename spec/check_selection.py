@@ -37,6 +37,9 @@ EXPR_SIGMA = 0.6    # same lognormal spread as data/geometry_pitch40.npz
 N_CYCLES = 4
 SEEDS = (20261001, 20261002, 20261003, 20261004, 20261005)
 CONTRAST_MARGIN = 0.02
+ARREST_FRAC = 0.30      # share of cells held below division volume, gate G-Q
+HOARD_MULT = 50.0       # max single-cell activity share, in multiples of uniform
+LETHAL_GY = 1000.0
 
 
 def G_of_T(T_h):
@@ -181,6 +184,108 @@ def gate_D(uptake=None, open_is_closed=False):
                 f"(every one must be > 0)"]
 
 
+# ---- gate G-Q: arrested cells are not immortal ------------------------------
+
+def gate_Q(draw_only_on_division=False):
+    """A lethal dose must kill every exposed cell, including arrested ones.
+
+    A cell held below its division volume by crowding never attempts division.
+    If the survival draw is gated on that attempt, the cell absorbs any dose and
+    stays viable. The committed reference does not have the hole: its death
+    sweep is unconditional (study3_run.py:142-149).
+    """
+    rng = random.Random(20261301)
+    n_arrested = int(CAP * ARREST_FRAC)
+    arrested = set(range(n_arrested))
+    sf = math.exp(-(ALPHA * LETHAL_GY + BETA * G96 * LETHAL_GY ** 2))
+    deaths = 0
+    for i in range(CAP):
+        if draw_only_on_division and i in arrested:
+            continue                      # never attempts division, never drawn
+        if rng.random() >= sf:
+            deaths += 1
+    ok = deaths == CAP
+    return ok, [f"{LETHAL_GY:g} Gy, SF = {sf!r}",
+                f"{n_arrested} of {CAP} cells arrested below division volume",
+                f"deaths {deaths} of {CAP} (every exposed cell must die)"]
+
+
+# ---- gate G-B: dose is consumed by the check, never banked ------------------
+
+def gate_B(accumulate=False):
+    """SF at cycle k must use cycle k's dose, not the sum over earlier cycles.
+
+    G(T) is derived for one continuous exposure of duration T. PRRT cycles are
+    weeks apart and repair completes between them, so squaring a summed dose is
+    not the same model.
+    """
+    per_cycle = [5.0] * N_CYCLES
+    d, seq = 0.0, []
+    for D in per_cycle:
+        d = d + D if accumulate else D
+        seq.append(math.exp(-(ALPHA * d + BETA * G96 * d * d)))
+    want = math.exp(-(ALPHA * 5.0 + BETA * G96 * 25.0))
+    ok = all(abs(s - want) < 1e-12 for s in seq)
+    prod = 1.0
+    for s in seq:
+        prod *= s
+    ref = want ** N_CYCLES
+    return ok, [f"per-cycle SF {[round(s, 6) for s in seq]}",
+                f"4-cycle survival {prod:.6e} against the correct {ref:.6e}",
+                f"ratio {prod / ref:.4f} (must be 1.0)"]
+
+
+# ---- gate G-H: no cell takes an implausible share of the activity ----------
+
+def gate_H(power=1.0):
+    """Uptake is renormalized, so one cell hoarding it starves every other.
+
+    The threshold is measured, not declared from biology: uptake proportional
+    to e peaks at 5.8x uniform, while uptake proportional to e**4 reaches 132x.
+    """
+    uniform = 1.0 / CAP
+    worst, per_seed = 0.0, []
+    for s in SEEDS:
+        rng = random.Random(s)
+        e = list(E_T0)
+        occupied, free = list(range(CAP)), []
+        top = 0.0
+        for _ in range(N_CYCLES):
+            if not occupied:
+                break
+            w = [0.0] * CAP
+            for i in occupied:
+                w[i] = e[i] ** power
+            tot = sum(w)
+            w = [v / tot for v in w]
+            top = max(top, max(w))
+            D = [KPHYS * v for v in w]
+            died = [i for i in occupied
+                    if rng.random() >= math.exp(
+                        -(ALPHA * D[i] + BETA * G96 * D[i] ** 2))]
+            dead = set(died)
+            occupied = [i for i in occupied if i not in dead]
+            free.extend(died)
+            for _ in range(N_STEPS):
+                if not free or not occupied:
+                    break
+                k = min(rng.binomialvariate(len(occupied), P_STEP), len(free))
+                if k == 0:
+                    continue
+                for pa in rng.sample(occupied, k):
+                    j = rng.randrange(len(free))
+                    free[j], free[-1] = free[-1], free[j]
+                    tg = free.pop()
+                    e[tg] = e[pa] * math.exp(SIGMA_DIV * rng.gauss(0.0, 1.0))
+                    occupied.append(tg)
+        per_seed.append(top / uniform)
+        worst = max(worst, top / uniform)
+    ok = worst < HOARD_MULT
+    return ok, [f"max single-cell share, in multiples of uniform: "
+                f"{[round(v, 1) for v in per_seed]}",
+                f"worst {worst:.1f}x (limit {HOARD_MULT:g}x)"]
+
+
 # ---- controls ---------------------------------------------------------------
 
 def _drift_ignores_sigma(ep, s, r):
@@ -200,6 +305,12 @@ def _uptake_inverse(ev):
 
 def run_controls():
     cases = [
+        ("G-Q", lambda: gate_Q(draw_only_on_division=True),
+         "survival drawn only when a cell attempts division"),
+        ("G-B", lambda: gate_B(accumulate=True),
+         "accumulated_dose banked across cycles"),
+        ("G-H", lambda: gate_H(power=4.0),
+         "uptake proportional to e**4"),
         ("G-S", lambda: gate_S(inherit=_drift_ignores_sigma),
          "drift hardcoded, ignores sigma_div = 0"),
         ("G-S", lambda: gate_S(inherit=_inherit_offset),
@@ -228,7 +339,8 @@ def main():
     print(f"reduced population: {CAP} sites, {N_CYCLES} cycles, "
           f"{len(SEEDS)} seeds, G(96 h) = {G96:.6f}")
     fails = []
-    for name, fn in (("G-S", gate_S), ("G-D", gate_D)):
+    for name, fn in (("G-S", gate_S), ("G-D", gate_D),
+                     ("G-Q", gate_Q), ("G-B", gate_B), ("G-H", gate_H)):
         ok, detail = fn()
         print(f"  {'PASS' if ok else 'FAIL'} {name}")
         for d in detail:

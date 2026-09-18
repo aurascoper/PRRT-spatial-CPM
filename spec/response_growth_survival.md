@@ -171,6 +171,10 @@ naming and use their own. The map:
 5 paired seeds, so both are executable without a transport code. The absolute
 drift there is not the study's and is not meant to be.
 
+Three further gates come from the amendments below and have no counterpart in
+the committed studies: `G-Q` (arrested cells still die), `G-B` (dose is not
+banked across cycles) and `G-H` (no cell hoards the activity).
+
 Two differences worth knowing before you write assertions:
 
 - **G-O is stricter here than in the committed gate.** The spec demands exactly
@@ -270,6 +274,112 @@ uniform dose: deaths/cycle [1870, 1895, 1875, 1866]
 
 Implement the uniform-dose form. Keep the zero-dose form too if you like; it is
 cheap, and it does catch a `SF` that is wrong at `D = 0`.
+
+---
+
+# Amendments
+
+A red-team read of the circulated spec on 2026-09-17 raised four ways an exact
+implementation could be wrong while passing every gate in section 5. Three
+reproduce. One does not, and the reason it does not is itself worth stating.
+
+Each amendment changes a rule, so it is separate from the corrections above,
+which only fixed descriptions of the reference.
+
+## A1 — the survival check is forced at the end of the cycle
+
+**Confirmed.** Section 4 draws the survival coin "at the first post-exposure
+division attempt". In a crowded lattice, `lambda_V` and `lambda_S` can hold a
+cell below its division volume for the whole window. The cell then never
+attempts division, the coin is never drawn, and it absorbs any dose while
+`cell_state` stays 1.
+
+The committed reference does not have the hole. Its death sweep is
+unconditional and runs before the division loop
+(`study3_closed_loop/study3_run.py:142-149`).
+
+**Rule.** Every cell exposed to dose is drawn exactly once per cycle. A cell
+that has not attempted division by the final Monte Carlo step of the cycle is
+drawn there. Gate `G-Q` in `spec/check_selection.py` holds 30% of the
+population below division volume at 1000 Gy and requires all 2000 deaths.
+
+## A2 — `accumulated_dose` is consumed by the check, and daughters start at zero
+
+**Confirmed.** Section 1 reads "Set once per cycle from the
+transport/dose-accumulation step. Not decremented." A reader can take the field
+name and "not decremented" together as a running total across cycles.
+
+That reading breaks the model. `G(T)` is derived for one continuous exposure of
+duration `T`. PRRT cycles are about eight weeks apart and repair completes
+between them, so the summed dose may not be squared.
+
+Measured cost of the wrong reading, at the pinned alpha and beta:
+
+| Two cycles | Correct `SF(a)*SF(b)` | Banked `SF(a+b)` | Ratio |
+|---|---|---|---|
+| 2 + 2 Gy | 3.748788e-01 | 3.670324e-01 | 0.979 |
+| 5 + 5 Gy | 7.948366e-02 | 6.964060e-02 | 0.876 |
+| 10 + 10 Gy | 4.849813e-03 | 2.858008e-03 | 0.589 |
+
+The reference computes dose fresh each cycle and never banks
+(`study3_run.py:226-232`).
+
+**Rule.** `accumulated_dose` is reset to 0.0 by the survival check, whether the
+cell lived or died. Daughters are born with `accumulated_dose = 0.0`. The LQ
+formula sees only the current cycle's dose. Gate `G-B` requires the per-cycle
+`SF` to be identical across four equal-dose cycles.
+
+## A3 — a dying cell below two sites is deleted outright
+
+**Plausible, and not covered by a runnable gate here.** Semantics B sets
+`V_target = 0` and lets Metropolis dynamics resorb the cell. Setting the target
+to zero does not guarantee removal: a favourable adhesion term can make the
+shrinking copy attempts unprofitable, and the cell can persist at one or two
+sites as a barrier that still blocks refill.
+
+Study 3 has no Potts Hamiltonian, so nothing in this repository can reproduce
+the failure. The upstream CPM is the evidence instead: `biofilms_potts.jl:647`
+culls only at `cell.volume <= 0`, with no threshold above zero.
+
+**Rule.** Under Semantics B, a cell in the dying state whose actual volume falls
+below 2 sites is deleted from the lattice immediately, and its sites are freed.
+Log the deletion; a resorption that never completes is a result, not a detail.
+
+## A4 — hoarding is instrumented, not clamped
+
+**Does not reproduce.** The red-team reading is that multiplicative drift is an
+unbounded walk in log space, so a cell reaches `e = 1e10` and takes nearly all
+the administered activity.
+
+Measured over 4 cycles at the pinned `sigma_div = 0.10`, expression walks
+**down**, not up:
+
+| Seed | max e after 4 cycles | min e | deepest lineage |
+|---|---|---|---|
+| 20261001 | 0.3827 | 0.021238 | 17 |
+| 20261002 | 0.5302 | 0.029513 | 16 |
+| 20261003 | 0.4277 | 0.048845 | 18 |
+
+The initial maximum is 5.7942, so the largest value falls by more than tenfold.
+`e = 1e10` needs `ln e = 23`, about 52,900 divisions of 0.10 drift along one
+lineage; the deepest lineage reaches 18.
+
+The loop suppresses the walk it is accused of amplifying. A high-`e` cell takes
+more activity, receives more dose, and dies. Downward drift is the model's
+result, not a defect, and an invented `e_max` would be a declared parameter with
+no measured provenance.
+
+The residual risk is real but different: an uptake rule that concentrates. Max
+single-cell share, in multiples of the uniform share:
+
+| Uptake rule | Worst share |
+|---|---|
+| proportional to `e`, as specified | 5.8x |
+| proportional to `e**4`, a concentrating bug | 132.1x |
+
+**Rule.** No clamp on `expression_e`. Instead, report the maximum single-cell
+share of the administered activity every cycle, and refuse above 50x the
+uniform share. Gate `G-H` enforces it, and its control is the `e**4` rule.
 
 ---
 

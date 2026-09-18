@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 """Study 3 figure + state export for the public repo.
 
-Produces:
-  runs/cycle4_state.npz        — cycle-4 cell states (voxel, e, ln e, tissue)
-  figures/expression_drift.png — 3D voxel render, cycle 1 vs cycle 4
-  figures/trajectory.png       — population + drift trajectory, both arms
+Produces, paths relative to the repository root:
+  data/cycle4_state.npz                   — cycle-1 and cycle-4 dose fields, T0 map
+  figures/activity_cycle1_vs_cycle4.png   — activity map, cycle 1 vs cycle 4
+  figures/trajectory.png                  — population + drift trajectory, both arms
+  figures/dose_cv_compression.png         — dose CV per cycle, both arms
+
+Reads study3_closed_loop/runs/closed_c{1,4}_d20261001_dose.bin and
+closed_c4_d20261001.bin, the representative closed-loop replicate.
 """
 import json
 import os
@@ -13,15 +17,15 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-S1 = "/home/aurascoper/Developer/PRRT-spatial-cpm/study1_dpk_vs_mc"
-S3 = "/home/aurascoper/Developer/PRRT-spatial-cpm/study3_closed_loop"
-FIG = f"{S3}/figures"
+S3 = os.path.dirname(os.path.abspath(__file__))      # study3_closed_loop/
+DATA = os.path.join(S3, "..", "data")                # hashed geometry npz, state export
+FIG = os.path.join(S3, "..", "figures")
 RUNS = f"{S3}/runs"
 os.makedirs(FIG, exist_ok=True)
 os.makedirs(RUNS, exist_ok=True)
 
 verdict = json.load(open(f"{S3}/verdict.json"))
-gdat = np.load(f"{S1}/geometry_pitch40.npz")
+gdat = np.load(f"{DATA}/geometry_pitch40.npz")
 cell_id = gdat["cell_id"]
 n = 25
 VOX = np.flatnonzero(cell_id > 0).astype(np.int64)
@@ -33,7 +37,7 @@ E_T0 = gdat["activity"].astype(np.float64).ravel(order="C")
 # declared T0 map + verdict numbers instead, and save the c4 dose field.
 d4 = np.fromfile(f"{RUNS}/closed_c4_d20261001_dose.bin", dtype=np.float64)
 d1 = np.fromfile(f"{RUNS}/closed_c1_d20261001_dose.bin", dtype=np.float64)
-np.savez_compressed(f"{RUNS}/cycle4_state.npz",
+np.savez_compressed(f"{DATA}/cycle4_state.npz",
                     cell_id=cell_id,
                     dose_cycle1_per_decay=d1.reshape(n, n, n),
                     dose_cycle4_per_decay=d4.reshape(n, n, n),

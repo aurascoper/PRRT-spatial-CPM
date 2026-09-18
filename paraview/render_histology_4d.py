@@ -3,7 +3,7 @@ import math
 import os
 import paraview.simple as smp
 
-OUT = "/home/aurascoper/Developer/PRRT-spatial-cpm/study3_closed_loop/paraview"
+OUT = os.path.dirname(os.path.abspath(__file__))     # paraview/
 FRAMES = f"{OUT}/frames_4d"
 os.makedirs(FRAMES, exist_ok=True)
 for f in os.listdir(FRAMES):

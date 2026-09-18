@@ -1,5 +1,7 @@
-ENV=/home/aurascoper/micromamba/envs/geant4
-G4DATA=$ENV/share/Geant4/data
+# Geant4 install prefix. Override by exporting GEANT4_PREFIX before sourcing.
+# The default is the micromamba env the committed runs used.
+GEANT4_PREFIX="${GEANT4_PREFIX:-$HOME/micromamba/envs/geant4}"
+G4DATA=$GEANT4_PREFIX/share/Geant4/data
 export G4ENSDFSTATEDATA=$G4DATA/ENSDFSTATE3.0
 export G4RADIOACTIVEDATA=$G4DATA/RadioactiveDecay6.1.2
 export G4LEDATA=$G4DATA/EMLOW8.8
@@ -11,4 +13,4 @@ export G4ABLADATA=$G4DATA/ABLA3.3
 export G4INCLDATA=$G4DATA/INCL1.3
 export G4CHANNELINGDATA=$G4DATA/CHANNELING2.0
 export G4REALSURFACEDATA=$G4DATA/RealSurface2.2
-export LD_LIBRARY_PATH=$ENV/lib:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=$GEANT4_PREFIX/lib:$LD_LIBRARY_PATH

@@ -28,13 +28,13 @@ Declared conventions:
   - kphys (Gy per unit MeV/decay) set ONCE at cycle 1 so mean viable
     dose = D_MEAN_TARGET = 10 Gy; frozen thereafter.
 """
-import json
+import json, os   # one line: citations into this file are by line number
 import hashlib
 import subprocess
 import numpy as np
 
-S1 = "/home/aurascoper/Developer/PRRT-spatial-cpm/study1_dpk_vs_mc"
-S3 = "/home/aurascoper/Developer/PRRT-spatial-cpm/study3_closed_loop"
+S3 = os.path.dirname(os.path.abspath(__file__))      # study3_closed_loop/
+S1, DATA = os.path.join(S3, "..", "study1"), os.path.join(S3, "..", "data")
 APP = f"{S1}/build/study1_app"
 RUNS = f"{S3}/runs"
 
@@ -87,10 +87,10 @@ G96 = float(G_of_T(T_ACT))
 
 # ---- Fixed objects ----------------------------------------------------------
 geo_meta = json.load(open(f"{S1}/geometry_pitch40_meta.json"))
-with open(f"{S1}/geometry_pitch40.npz", "rb") as f:
+with open(f"{DATA}/geometry_pitch40.npz", "rb") as f:
     h_geo = hashlib.sha256(f.read()).hexdigest()
 assert h_geo == geo_meta["npz_sha256"], "geometry hash mismatch"
-gdat = np.load(f"{S1}/geometry_pitch40.npz")
+gdat = np.load(f"{DATA}/geometry_pitch40.npz")
 cell_id = gdat["cell_id"]
 n = geo_meta["n_voxels_per_axis"]
 NV = n ** 3

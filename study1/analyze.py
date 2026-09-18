@@ -22,9 +22,11 @@ Endpoints:
 """
 import json
 import hashlib
+import os
 import numpy as np
 
-BASE = "/home/aurascoper/Developer/PRRT-spatial-cpm/study1_dpk_vs_mc"
+BASE = os.path.dirname(os.path.abspath(__file__))   # study1/: runs/ and geometry meta
+DATA = os.path.join(BASE, "..", "data")              # hashed geometry npz
 THRESH = 0.02          # pre-declared
 CORE_FRAC = 0.01       # clinical core: D_ref > 1% of max
 REF_FLOOR = 0.015      # Perrot 2014 agreement floor
@@ -61,7 +63,7 @@ def verdict(p):
     # occupied voxels (cell_id > 0), which is exactly the declared scope.
     r1, m1 = load_ref(p, 1)
     r2, m2 = load_ref(p, 2)
-    gmask = np.load(f"{BASE}/geometry_pitch{p}.npz")["cell_id"] > 0
+    gmask = np.load(f"{DATA}/geometry_pitch{p}.npz")["cell_id"] > 0
     core = core_mask(r2) & core_mask(r1) & gmask
     denom = np.where(core, np.maximum(r2, 1e-30), np.nan)
     ladder = p95_abs((r1 - r2)[core] / denom[core])
@@ -83,7 +85,7 @@ def verdict(p):
                                      float(np.percentile(np.abs(rv), 95)),
                                      float(np.percentile(np.abs(rv), 99))]
     # cell residual: mean dose per cell over its voxels
-    g = np.load(f"{BASE}/geometry_pitch{p}.npz")
+    g = np.load(f"{DATA}/geometry_pitch{p}.npz")
     cid = g["cell_id"]
     # per-cell sums via np.add.at
     ncells = int(cid.max()) + 1
@@ -105,7 +107,7 @@ def verdict(p):
     out["verdict"] = "PASS-DPK" if cp95 < THRESH else "FAIL-DPK"
     # C4: geometry hash control
     m = json.load(open(f"{BASE}/geometry_pitch{p}_meta.json"))
-    h = hashlib.sha256(open(f"{BASE}/geometry_pitch{p}.npz", "rb").read()).hexdigest()
+    h = hashlib.sha256(open(f"{DATA}/geometry_pitch{p}.npz", "rb").read()).hexdigest()
     out["C4_hash_ok"] = (h == m["npz_sha256"])
     return out
 
@@ -122,5 +124,6 @@ if __name__ == "__main__":
                 print(f"   {k}: {r.get(k)}")
         except FileNotFoundError as e:
             print(f"--- pitch {p}: MISSING INPUT ({e}) — runs still in flight?")
+    os.makedirs(f"{BASE}/runs", exist_ok=True)
     json.dump(results, open(f"{BASE}/runs/verdicts.json", "w"), indent=1, default=str)
     print("\nwritten runs/verdicts.json")

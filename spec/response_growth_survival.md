@@ -175,6 +175,9 @@ Three further gates come from the amendments below and have no counterpart in
 the committed studies: `G-Q` (arrested cells still die), `G-B` (dose is not
 banked across cycles) and `G-H` (no cell hoards the activity).
 
+`spec/pr_checklist.md` states what a port's pull request must declare, which
+tests it must ship, and four hazards specific to the Odin port.
+
 Two differences worth knowing before you write assertions:
 
 - **G-O is stricter here than in the committed gate.** The spec demands exactly

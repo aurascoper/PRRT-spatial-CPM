@@ -60,6 +60,10 @@ G-D from the spec, plus G-Q, G-B and G-H from its amendments.
 has stopped checking anything is visible rather than silently green. Both
 scripts use the standard library only.
 
+`spec/pr_checklist.md` is the acceptance criteria for a port's pull request:
+the declarations its description must state, the tests it must ship, and four
+hazards read from the Odin port at `ffinkdevs/Biofilms@4788dcd1`.
+
 ## Reproducing
 
 Requirements: Python 3.12+ (numpy, scipy), Geant4 11.4.2 with

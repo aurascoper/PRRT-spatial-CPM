@@ -37,7 +37,27 @@ figures/                  Study-3 summary figures
 paraview/                 ParaView volumes: cycle-1 vs cycle-4 .vti + .pvd
                           series + the exporter that made them
 data/                     hashed T0 geometry + cycle-4 state export
+spec/                     response.growth_survival module spec + test vectors
 ```
+
+## Implementing the response layer elsewhere
+
+`spec/response_growth_survival.md` is the specification for the
+`response.growth_survival` dividing/dying module, written for ports that add
+the layer to their own CPM. It pins the constants, gives the test vectors, and
+declares the two acceptable death/refill semantics.
+
+```bash
+python3 spec/check_vectors.py --controls     # vectors + gates G-N, G-O, G-P, G-C
+python3 spec/check_selection.py --controls   # gates G-S and G-D, reduced lattice
+```
+
+The first asserts every vector in the spec and runs the four closed-form gates.
+The second runs the two population gates on 2000 sites and 5 paired seeds.
+
+`--controls` feeds each gate an implementation it must reject, so a gate that
+has stopped checking anything is visible rather than silently green. Both
+scripts use the standard library only.
 
 ## Reproducing
 

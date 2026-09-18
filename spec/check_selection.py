@@ -67,21 +67,26 @@ KPHYS = D_MEAN_TARGET / (A_ADMIN / CAP)
 
 
 def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
-            dose="hetero", inherit=None, uptake=None):
+            dose="hetero", inherit=None, uptake=None,
+            bank_dose=False, sf_log=None):
     """One arm of n_cycles. Returns (mean ln e per cycle start, deaths per cycle).
 
-    closed   True re-normalizes activity over the living each cycle.
-             False freezes the cycle-1 voxel map and re-applies it blind, so a
-             dead site keeps its declared activity (study3_run.py:20-23).
-    dose     "hetero", "uniform" (every site D_MEAN_TARGET) or "zero".
-    inherit  daughter rule, for the negative controls.
-    uptake   weight rule, for the negative controls.
+    closed     True re-normalizes activity over the living each cycle.
+               False freezes the cycle-1 voxel map and re-applies it blind, so a
+               dead site keeps its declared activity (study3_run.py:20-23).
+    dose       "hetero", "uniform" (every site D_MEAN_TARGET) or "zero".
+    inherit    daughter rule, for the negative controls.
+    uptake     weight rule, for the negative controls.
+    bank_dose  the A2 defect, for gate G-B's control: carry each site's dose
+               into the next cycle instead of consuming it at the check.
+    sf_log     if a list, receives the mean SF applied to the living each cycle.
     """
     rng = random.Random(seed)
     inherit = inherit or (lambda ep, s, r: ep * math.exp(s * r.gauss(0.0, 1.0)))
     uptake = uptake or (lambda ev: ev)
 
     e = [1.0] * CAP if uniform_e else list(E_T0)
+    acc = [0.0] * CAP      # dose the survival check reads; A2 says it is consumed
     occupied = list(range(CAP))
     free = []
     frozen_w = None
@@ -106,12 +111,21 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
                 frozen_w = list(w)
             D = [KPHYS * v for v in (w if closed else frozen_w)]
 
+        # A2: the check reads this cycle's dose only. Banking it instead is the
+        # defect gate G-B exists to refuse, so it is reachable here on purpose.
+        for i in occupied:
+            acc[i] = acc[i] + D[i] if bank_dose else D[i]
+
         # death sweep: unconditional, before any division (study3_run.py:142-149)
         died = []
+        sf_sum = 0.0
         for i in list(occupied):
-            sf = math.exp(-(ALPHA * D[i] + BETA * G96 * D[i] ** 2))
-            if rng.random() >= sf:
+            sf = math.exp(-(ALPHA * acc[i] + BETA * G96 * acc[i] ** 2))
+            sf_sum += sf
+            if rng.random() > sf:          # spec §4: dies iff RNG > SF
                 died.append(i)
+        if sf_log is not None:
+            sf_log.append(sf_sum / len(occupied))
         dead = set(died)
         occupied = [i for i in occupied if i not in dead]
         free.extend(died)
@@ -130,6 +144,7 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
                 free[j], free[-1] = free[-1], free[j]
                 t = free.pop()
                 e[t] = inherit(e[p], sigma_div, rng)
+                acc[t] = 0.0       # A2: a daughter is born with no dose
                 occupied.append(t)
     return ln_means, death_counts
 
@@ -140,8 +155,17 @@ def gate_S(inherit=None):
     """Uniform e, zero drift: mean e must stay exactly 1.0, with and without dose.
 
     The spec says zero dose. The committed K2 arm uses uniform dose instead
-    (study3_run.py:253-256), which is the stronger form because death and refill
-    actually run. Both are required here.
+    (study3_run.py:253-256), so death and refill actually execute. Both are
+    required here.
+
+    WHAT THE UNIFORM-DOSE FORM CANNOT SEE. With every cell at e = 1.0 and
+    sigma_div = 0, every daughter is exactly 1.0 whichever parent refills the
+    site. So a refill that picks its parents with any bias still leaves the mean
+    at exactly 1.0, and this main assertion stays green. The uniform-dose form
+    catches a crash, a NaN or a corrupted state during death and refill. It does
+    not catch a biased refill. That discriminating power lives only in the
+    --controls cases, which make e non-uniform. An earlier docstring, and the
+    spec's Correction 3, claimed the opposite.
     """
     detail = []
     for label, dose in (("zero dose", "zero"), ("uniform dose", "uniform")):
@@ -202,7 +226,7 @@ def gate_Q(draw_only_on_division=False):
     for i in range(CAP):
         if draw_only_on_division and i in arrested:
             continue                      # never attempts division, never drawn
-        if rng.random() >= sf:
+        if rng.random() > sf:              # spec §4: dies iff RNG > SF
             deaths += 1
     ok = deaths == CAP
     return ok, [f"{LETHAL_GY:g} Gy, SF = {sf!r}",
@@ -212,30 +236,45 @@ def gate_Q(draw_only_on_division=False):
 
 # ---- gate G-B: dose is consumed by the check, never banked ------------------
 
-def gate_B(accumulate=False):
+def gate_B(bank_dose=False):
     """SF at cycle k must use cycle k's dose, not the sum over earlier cycles.
 
     G(T) is derived for one continuous exposure of duration T. PRRT cycles are
     weeks apart and repair completes between them, so squaring a summed dose is
     not the same model.
+
+    THIS GATE USED TO BE ARITHMETIC ALONE, and could not fail. It looped over a
+    local list, toggling a local `accumulate` flag, and never called run_arm. So
+    it showed only that the LQ formula is non-linear, which is always true, and
+    no code path it guarded could bank dose. A port that reproduced it faithfully
+    shipped the same decoration, which is how the defect was found.
+
+    It now drives run_arm's real death sweep under uniform dose. With dose
+    consumed at the check, every living cell sees exactly D_MEAN_TARGET each
+    cycle, so the mean SF applied is the same number every cycle. Banking makes
+    each survivor carry its old dose forward, and the mean SF falls.
     """
-    per_cycle = [5.0] * N_CYCLES
-    d, seq = 0.0, []
-    for D in per_cycle:
-        d = d + D if accumulate else D
-        seq.append(math.exp(-(ALPHA * d + BETA * G96 * d * d)))
-    want = math.exp(-(ALPHA * 5.0 + BETA * G96 * 25.0))
-    ok = all(abs(s - want) < 1e-12 for s in seq)
-    prod = 1.0
-    for s in seq:
-        prod *= s
-    ref = want ** N_CYCLES
-    return ok, [f"per-cycle SF {[round(s, 6) for s in seq]}",
-                f"4-cycle survival {prod:.6e} against the correct {ref:.6e}",
-                f"ratio {prod / ref:.4f} (must be 1.0)"]
+    sf_log = []
+    run_arm(20261401, closed=True, dose="uniform", bank_dose=bank_dose,
+            sf_log=sf_log)
+    want = math.exp(-(ALPHA * D_MEAN_TARGET + BETA * G96 * D_MEAN_TARGET ** 2))
+    ok = len(sf_log) == N_CYCLES and all(abs(s - want) < 1e-12 for s in sf_log)
+    return ok, [f"mean SF applied per cycle {[f'{s:.6e}' for s in sf_log]}",
+                f"required every cycle: {want:.6e}, the SF of one cycle's dose"]
 
 
 # ---- gate G-H: no cell takes an implausible share of the activity ----------
+
+def share_cap_is_reachable(n, cap=HOARD_MULT):
+    """Whether a share cap can ever refuse in a population of n living cells.
+
+    The share is max(e) / mean(e), and one cell holding all the expression gives
+    exactly n. So the share can never exceed n, and a cap at or above n refuses
+    nothing: gate G-H passes vacuously for any uptake rule at all. A port running
+    14 to 48 cells hit exactly that, and the spec never said so.
+    """
+    return n > cap
+
 
 def gate_H(power=1.0):
     """Uptake is renormalized, so one cell hoarding it starves every other.
@@ -243,6 +282,9 @@ def gate_H(power=1.0):
     The threshold is measured, not declared from biology: uptake proportional
     to e peaks at 5.8x uniform, while uptake proportional to e**4 reaches 132x.
     """
+    if not share_cap_is_reachable(CAP):
+        return False, [f"VACUOUS: the share can never exceed the population "
+                       f"{CAP}, so a {HOARD_MULT:g}x cap refuses nothing"]
     uniform = 1.0 / CAP
     worst, per_seed = 0.0, []
     for s in SEEDS:
@@ -261,7 +303,7 @@ def gate_H(power=1.0):
             top = max(top, max(w))
             D = [KPHYS * v for v in w]
             died = [i for i in occupied
-                    if rng.random() >= math.exp(
+                    if rng.random() > math.exp(   # spec §4: dies iff RNG > SF
                         -(ALPHA * D[i] + BETA * G96 * D[i] ** 2))]
             dead = set(died)
             occupied = [i for i in occupied if i not in dead]
@@ -307,8 +349,8 @@ def run_controls():
     cases = [
         ("G-Q", lambda: gate_Q(draw_only_on_division=True),
          "survival drawn only when a cell attempts division"),
-        ("G-B", lambda: gate_B(accumulate=True),
-         "accumulated_dose banked across cycles"),
+        ("G-B", lambda: gate_B(bank_dose=True),
+         "dose banked across cycles on the real sweep"),
         ("G-H", lambda: gate_H(power=4.0),
          "uptake proportional to e**4"),
         ("G-S", lambda: gate_S(inherit=_drift_ignores_sigma),
@@ -327,6 +369,25 @@ def run_controls():
         print(f"  {'refused ' if not ok else 'ACCEPTED'} {name:<4} {why}")
         if ok:
             fails.append(f"{name} accepted: {why}")
+    return fails + check_share_cap_control()
+
+
+def check_share_cap_control():
+    """The vacuity guard on G-H is itself a guard, so it needs a control.
+
+    The boundary is the whole content: at n = cap the most extreme possible
+    share equals the cap and cannot exceed it, so n = 50 must read unreachable
+    and n = 51 reachable.
+    """
+    cases = [(14, False), (40, False), (50, False), (51, True), (CAP, True)]
+    fails = []
+    print("share-cap reachability (a cap at or above the population refuses nothing):")
+    for n, want in cases:
+        got = share_cap_is_reachable(n)
+        ok = got == want
+        print(f"  {'ok  ' if ok else 'FAIL'} n={n:<5} reachable={got}  (want {want})")
+        if not ok:
+            fails.append(f"share-cap reachability wrong at n={n}")
     return fails
 
 

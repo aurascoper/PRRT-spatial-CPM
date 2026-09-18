@@ -278,6 +278,133 @@ uniform dose: deaths/cycle [1870, 1895, 1875, 1866]
 Implement the uniform-dose form. Keep the zero-dose form too if you like; it is
 cheap, and it does catch a `SF` that is wrong at `D = 0`.
 
+*(Correction 6 narrows what the uniform-dose form can detect.)*
+
+## Correction 4 — the checker enforced five significant digits while claiming six
+
+**2026-09-18. Found by the Odin port**, which bit-matched Julia on the vectors
+and reported a rounding problem.
+
+`spec/check_vectors.py` computed its tolerance as `10**(-sig + 1)`. At `sig = 6`
+the formula gives 1e-5, a full decade looser than the 5e-6 that six significant
+digits means.
+
+The vectors file hid the gap. `SF_at_G96` was stored in `%.6e`, which gives seven
+significant digits. `G_of_T` and `protraction_at_10Gy` were stored in `%.6f`,
+which gives five for any value below 1. One `_tolerance` string claimed six for
+all of them.
+
+`SF(10 Gy, 96 h)` was stored as 0.069641, against a true 0.0696405992270619. The
+relative error is 5.75e-6, so it failed six digits and passed only on the slack.
+The checker also printed `round(got, 6)` on that line, so the failure displayed
+as two identical numbers.
+
+**What changed.** The tolerance is now `5 * 10**(-sig)`. Every float vector is
+stored at seven significant digits and asserted at six, leaving headroom. The
+display prints full precision.
+
+A new control proves the tolerance refuses the old five-digit value, accepts the
+seven-digit one, and that the old formula accepted the five-digit value. Without
+the third case nothing would show the change did anything.
+
+The file also claimed `_generated_by: spec/check_vectors.py --emit`. No such flag
+exists, and no tool generates the file. The claim is removed.
+
+## Correction 5 — the drift gap comes from dose coupling, not geometry
+
+**2026-09-18.** The G-D note in section 5 attributes the gap between our drift and
+the study's to "different geometry". The measurement says otherwise.
+
+Our reduced arm gives a closed drift of −1.4290 at 2000 sites. Re-run at the
+study's own 13978 sites it gives −1.4163, a 0.9% change. The population size is
+not the cause.
+
+The cause is how tightly dose follows expression. With no transport code, dose is
+exactly proportional to expression. Real transport deposits energy over a finite
+range, which blurs that link. Writing the coupling as
+`w_i ∝ rho * e_i + (1 - rho) * mean(e)`:
+
+| rho | closed drift |
+|---|---|
+| 1.0, as committed | −1.4290 |
+| 0.6 | −0.9932 |
+| 0.3 | −0.6144 |
+| 0.2 | −0.5181 |
+| 0.0 | −0.1362 |
+
+The study's −0.4838 falls at rho between 0.15 and 0.2. G-D is unaffected, because
+it tests sign and ordering, not magnitude.
+
+## Correction 6 — Correction 3 claimed more than the uniform-dose form can show
+
+**2026-09-18.** Correction 3 says the uniform-dose G-S form makes "a biased refill
+visible". It does not.
+
+With every cell at `e = 1.0` and `sigma_div = 0`, every daughter is exactly 1.0,
+whichever parent refills the site. A refill that chooses its parents with any
+bias therefore leaves the mean at exactly 1.0, and the gate stays green.
+
+The uniform-dose form still has value. It makes death and refill execute, which
+catches a crash, a NaN or a corrupted state. It does not catch a biased refill.
+
+The power to catch one lives in the `--controls` cases, which make `e`
+non-uniform. The rest of Correction 3 stands: the zero-dose form alone runs no
+death and no refill at all.
+
+## Correction 7 — gate G-B could not fail
+
+**2026-09-18.** G-B in `spec/check_selection.py` was arithmetic alone. It toggled
+a local flag inside its own loop and never called the cycle code.
+
+So it proved only that the LQ formula is non-linear, which is always true. No
+path it claimed to guard could bank dose. A port reproduced it faithfully and
+shipped the same decoration.
+
+**What changed.** G-B now drives the real death sweep in `run_arm` under uniform
+dose. With dose consumed at the check, the mean SF applied equals the one-cycle
+SF every cycle. Banking pulls cycles two to four below it:
+
+```
+dose consumed : 6.964060e-02  6.964060e-02  6.964060e-02  6.964060e-02
+dose banked   : 6.964060e-02  6.543330e-02  6.576581e-02  6.429799e-02
+```
+
+Removing the reset from the default path fails G-B, which is the check that the
+old version could never make.
+
+## Correction 8 — the checker and section 4 disagreed at the survival boundary
+
+**2026-09-18.** Section 4 says a cell divides when `RNG <= SF_i` and dies when
+`RNG > SF_i`. `spec/check_selection.py` killed on `RNG >= SF` at three sites.
+
+The two rules differ only when the draw equals SF exactly. At `SF = 0` the spec
+lets a draw of exactly 0.0 survive, and the checker killed it.
+
+The checker now follows section 4. Its output is byte-identical before and after,
+so no published number moved.
+
+One consequence follows from section 4 itself. At 1000 Gy, SF underflows to
+exactly 0.0, so a draw of exactly 0.0 survives with probability 2^-53 per cell.
+G-Q's "every exposed cell dies" is therefore exact for its pinned seed, not a
+theorem.
+
+## Correction 9 — the 50x share cap refuses nothing below 51 cells
+
+**2026-09-18.** Amendment A4 sets a 50x cap on the single-cell share of the
+administered activity, with no minimum population.
+
+The share is `max(e) / mean(e)`. One cell with all the expression gives exactly
+`n`, the living population. So the share never exceeds `n`, and at 50 cells or
+fewer the cap can never refuse. A port running 14 to 48 cells found G-H green for
+every uptake rule.
+
+**The rule, corrected.** The cap applies only when more than 50 cells are alive.
+Below that, report the share and do not treat the cap as a gate.
+
+`spec/check_selection.py` now refuses to report G-H as a pass when the population
+cannot exceed the cap. A control fixes the boundary: 50 cells unreachable, 51
+reachable.
+
 ---
 
 # Amendments
@@ -383,6 +510,8 @@ single-cell share, in multiples of the uniform share:
 **Rule.** No clamp on `expression_e`. Instead, report the maximum single-cell
 share of the administered activity every cycle, and refuse above 50x the
 uniform share. Gate `G-H` enforces it, and its control is the `e**4` rule.
+
+*(Correction 9 limits this rule to populations above 50 cells.)*
 
 ---
 

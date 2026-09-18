@@ -134,7 +134,7 @@ input reads the same whether it is checking something or nothing.
 | G-D | closed drift below open drift, both negative | uptake inversely proportional to `e` |
 | G-Q | every exposed cell dies at 1000 Gy, including arrested ones | the draw gated on a division attempt |
 | G-B | per-cycle `SF` identical across four equal-dose cycles | `accumulated_dose` banked across cycles |
-| G-H | max single-cell activity share below 50x uniform | uptake proportional to `e**4` |
+| G-H | max single-cell activity share below 50x uniform, with more than 50 cells alive | uptake proportional to `e**4` |
 | H1 | the three layouts agree on the new fields after a dose cycle | a field added to `AoS` only |
 | H4 | no lattice entry names a dead cell | the cull that calls `cell_kill` without clearing sites |
 

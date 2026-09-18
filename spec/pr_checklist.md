@@ -5,8 +5,8 @@ Acceptance criteria for the pull request that implements
 the Odin port at `ffinkdevs/Biofilms`, tag `odin-ensemble-256`, commit
 `4788dcd1`, so the paths and hazards below are that port's actual ones.
 
-The spec says what to build. This file says what the pull request has to show
-before anyone can tell whether it was built correctly.
+The spec says what to build. The criteria below say what the pull request has
+to show before anyone can tell whether it was built correctly.
 
 ## 1. Declarations the PR description must state
 
@@ -47,7 +47,7 @@ a port that disagrees with itself.
 
 ### H2 — the survival draws must not consume the Julia stream
 
-`Sim` holds two generators (`odin/cpm/sim.odin:15-17`):
+`Sim` declares two generators (`odin/cpm/sim.odin:15-17`):
 
 ```odin
 rng:      Rng,        // splitmix64 fast stream
@@ -75,7 +75,7 @@ maintain it at all, so a divide that increments one and not the others makes
 
 ### H4 — `cell_kill` does not clear the lattice, and a dead sigma spreads
 
-This one is the reason A3 matters more in this port than in the reference.
+H4 is the reason A3 matters more in this port than in the reference.
 
 `cell_kill` flips `alive` and touches nothing else. The cell's sites keep its
 sigma in `s.arena.lattice`. `species_of` then reports `MEDIUM` for those sites
@@ -86,7 +86,7 @@ Today that is harmless, by accident. The reap loop kills only at
 when it has no sites left. No dead-sigma site can exist.
 
 **Semantics B breaks the accident.** Amendment A3 culls a dying cell below 2
-sites, which kills it while it still occupies one. That site now holds a dead
+sites, which kills it while it still occupies one. The site then keeps a dead
 sigma, and the copy path propagates it:
 
 ```odin

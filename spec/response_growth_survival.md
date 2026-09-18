@@ -8,7 +8,7 @@ Reference implementations are linked at the bottom. Everything here is derived
 from two executed, committed, gate-verified studies. Nothing is invented for
 this issue.
 
-> **Provenance.** This text was written for
+> **Provenance.** The text below was written for
 > [aurascoper/PRRT-spatial-CPM#1](https://github.com/aurascoper/PRRT-spatial-CPM/issues/1)
 > and circulated as `ffinkdevs_growth_survival_SPEC.md`. It is committed here
 > unchanged so that section numbers stay citable. Corrections found after
@@ -78,7 +78,7 @@ section when the spec circulated.
 
 G values: `G(24 h) = 0.164076`, `G(96 h) = 0.044068`. Small-x branch vectors:
 `G(T = 1e-9 h) = 0.999999999846`, `G(T = 1e-6 h) = 0.999999845967`. The branch
-is continuous at `x = 1e-3`. *(Correction 2 gives the tolerance that holds
+is continuous at `x = 1e-3`. *(Correction 2 gives the tolerance that applies
 there.)*
 
 SF at `G(96 h)`, alpha/beta pinned above:
@@ -284,7 +284,7 @@ cheap, and it does catch a `SF` that is wrong at `D = 0`.
 
 A red-team read of the circulated spec on 2026-09-17 raised four ways an exact
 implementation could be wrong while passing every gate in section 5. Three
-reproduce. One does not, and the reason it does not is itself worth stating.
+reproduce. One does not, and the reason it does not is recorded here as well.
 
 Each amendment changes a rule, so it is separate from the corrections above,
 which only fixed descriptions of the reference.
@@ -301,9 +301,9 @@ The committed reference does not have the hole. Its death sweep is
 unconditional and runs before the division loop
 (`study3_closed_loop/study3_run.py:142-149`).
 
-**Rule.** Every cell exposed to dose is drawn exactly once per cycle. A cell
-that has not attempted division by the final Monte Carlo step of the cycle is
-drawn there. Gate `G-Q` in `spec/check_selection.py` holds 30% of the
+**Rule.** Every cell exposed to dose is drawn exactly once per cycle. The draw
+happens at the cell's first division attempt, or at the cycle's final Monte
+Carlo step when no attempt occurred. Gate `G-Q` in `spec/check_selection.py` arrests 30% of the
 population below division volume at 1000 Gy and requires all 2000 deaths.
 
 ## A2 — `accumulated_dose` is consumed by the check, and daughters start at zero
@@ -312,7 +312,7 @@ population below division volume at 1000 Gy and requires all 2000 deaths.
 transport/dose-accumulation step. Not decremented." A reader can take the field
 name and "not decremented" together as a running total across cycles.
 
-That reading breaks the model. `G(T)` is derived for one continuous exposure of
+The running total breaks the model. `G(T)` is derived for one continuous exposure of
 duration `T`. PRRT cycles are about eight weeks apart and repair completes
 between them, so the summed dose may not be squared.
 
@@ -351,7 +351,7 @@ Log the deletion; a resorption that never completes is a result, not a detail.
 ## A4 — hoarding is instrumented, not clamped
 
 **Does not reproduce.** The red-team reading is that multiplicative drift is an
-unbounded walk in log space, so a cell reaches `e = 1e10` and takes nearly all
+unbounded walk in log space, so a cell climbs to `e = 1e10` and takes nearly all
 the administered activity.
 
 Measured over 4 cycles at the pinned `sigma_div = 0.10`, expression walks
@@ -365,7 +365,7 @@ Measured over 4 cycles at the pinned `sigma_div = 0.10`, expression walks
 
 The initial maximum is 5.7942, so the largest value falls by more than tenfold.
 `e = 1e10` needs `ln e = 23`, about 52,900 divisions of 0.10 drift along one
-lineage; the deepest lineage reaches 18.
+lineage; the deepest lineage stops at 18.
 
 The loop suppresses the walk it is accused of amplifying. A high-`e` cell takes
 more activity, receives more dose, and dies. Downward drift is the model's
@@ -403,8 +403,8 @@ it. `preprint/closing_the_loop_prRT_spatial_cpm.tex:445-446`:
 > clone-specific doubling time, at which point division is attempted and
 > Eq.~\ref{eq:sf} is applied.
 
-and at line 403, dying cells are "cleared by **volume resorption**". That is
-Semantics B. The `P_STEP` Poisson clock in `study3_run.py:51` is the surrogate
+and at line 403, dying cells are "cleared by **volume resorption**". Those two
+rules are Semantics B. The `P_STEP` Poisson clock in `study3_run.py:51` is the surrogate
 study 3 used because it had no Potts dynamics, authorized as a declared
 boundary in `study3_closed_loop/PROTOCOL.md:185-187`.
 
@@ -415,7 +415,7 @@ the division loop runs (`study3_run.py:142-149`). It does not wait for a cell
 to reach a division.
 
 If you gate the death draw on a cell actually reaching `volume >= 2*V_target`,
-then a cell that never reaches target volume inside the window survives by
+then a cell that never grows that far inside the window survives by
 default. The extinction gate `K3` requires 13978 deaths of 13978 at 1000
 Gy/cycle and would break. Keep the death draw unconditional, and let the volume
 gate schedule only the refill.
@@ -463,9 +463,9 @@ The response layer reads exactly one key from the sidecar,
 E = np.fromfile(out + ".bin", dtype=np.float64) / meta["decays_simulated"]
 ```
 
-That converts MeV/voxel-total into MeV per decay per voxel. `n` and `pitch_um`
-are present in the sidecar but ignored on read; the shape is validated against
-the geometry instead, `assert E.size == NV`.
+The divisor converts MeV/voxel-total into MeV per decay per voxel. `n` and `pitch_um`
+are present in the sidecar but ignored on read. The array size is checked
+against the geometry instead, with `assert E.size == NV`.
 
 Gy conversion is a second, separate step. `kphys` is computed once at the first
 transport of the study so that mean viable dose is 10 Gy, then frozen across
@@ -478,8 +478,8 @@ one file, no header; sidecar `<tag>_meta.json` is `{"n": 25, "pitch_um": 40.0}`.
 For n=25 that is 187500 bytes. The transport app reads `cell_id` and never uses
 it; only `activity` matters, as the sampling CDF.
 
-No new format. Your section-7 assumption holds: dose arrives pre-accumulated
-per cycle, so no MCS-to-hours mapping enters the module.
+No new format. Your section-7 assumption is correct: dose arrives
+pre-accumulated per cycle, so no MCS-to-hours mapping enters the module.
 
 ## Answer 4 — statistical agreement only, and the test should be declared
 

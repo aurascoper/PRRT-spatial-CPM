@@ -15,9 +15,11 @@ this issue.
 > circulation are listed at the end under **Corrections**, and are not folded
 > silently into the body.
 >
-> Run `python3 spec/check_vectors.py --controls` to assert every vector in
-> section 3 and every numeric gate in section 5, including the inputs each gate
-> must reject.
+> Two checkers accompany it. `spec/check_vectors.py` asserts every vector in
+> section 3 and runs the closed-form gates G-N, G-O, G-P and G-C.
+> `spec/check_selection.py` runs the population gates G-S and G-D on a reduced
+> lattice. Both take `--controls`, which feeds every gate an input it must
+> reject.
 
 ## 0. The one-paragraph summary
 
@@ -165,6 +167,10 @@ naming and use their own. The map:
 | G-S | `K2 null-selection` | `study3_closed_loop/study3_run.py:280` | mean e `== 1.0` exactly, 4 cycles |
 | G-D | endpoints `E1a`/`E1b` | `study3_closed_loop/study3_run.py:341-347` | closed drift below worst open replicate; contrast > 0 |
 
+`spec/check_selection.py` runs G-S and G-D on a reduced lattice, 2000 sites and
+5 paired seeds, so both are executable without a transport code. The absolute
+drift there is not the study's and is not meant to be.
+
 Two differences worth knowing before you write assertions:
 
 - **G-O is stricter here than in the committed gate.** The spec demands exactly
@@ -237,6 +243,33 @@ to 1e-11" at `x = 1e-3`. They agree to 1.686e-11.
 The gap is the first dropped Taylor term, `x^3/60 = 1.67e-11` at `x = 1e-3`. It
 is mathematics, not float noise, so a literal test at 1e-11 fails on a correct
 implementation. `spec/reference_vectors.json` records a tolerance of 5e-11.
+
+## Correction 3 — G-S as worded cannot fail
+
+**2026-09-17.** Section 5 states G-S as "uniform expression, zero drift, zero
+dose". At zero dose every cell has `SF = 1.0`, so no cell dies, so no refill
+runs. The death and refill mechanics the gate exists to check never execute.
+
+The committed arm uses uniform dose, not zero dose.
+`study3_closed_loop/study3_run.py:253-256`:
+
+```python
+def gate_k2():
+    """Null selection: uniform e, sigma_div=0, uniform dose, 4 cycles."""
+```
+
+Uniform 10 Gy kills most of the population and the survivors refill, so the
+mechanics do run and a biased refill is visible. `spec/check_selection.py` runs
+both forms and prints the deaths per cycle for each, so the vacuous one is
+visible rather than silently green:
+
+```
+zero dose:    deaths/cycle [0, 0, 0, 0]
+uniform dose: deaths/cycle [1870, 1895, 1875, 1866]
+```
+
+Implement the uniform-dose form. Keep the zero-dose form too if you like; it is
+cheap, and it does catch a `SF` that is wrong at `D = 0`.
 
 ---
 

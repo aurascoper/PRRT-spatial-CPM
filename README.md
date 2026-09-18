@@ -48,12 +48,16 @@ the layer to their own CPM. It pins the constants, gives the test vectors, and
 declares the two acceptable death/refill semantics.
 
 ```bash
-python3 spec/check_vectors.py --controls
+python3 spec/check_vectors.py --controls     # vectors + gates G-N, G-O, G-P, G-C
+python3 spec/check_selection.py --controls   # gates G-S and G-D, reduced lattice
 ```
 
-That asserts every vector in the spec and runs the four numeric gates. The
-`--controls` flag also feeds each gate an implementation it must reject, so a
-gate that has stopped checking anything is visible rather than silently green.
+The first asserts every vector in the spec and runs the four closed-form gates.
+The second runs the two population gates on 2000 sites and 5 paired seeds.
+
+`--controls` feeds each gate an implementation it must reject, so a gate that
+has stopped checking anything is visible rather than silently green. Both
+scripts use the standard library only.
 
 ## Reproducing
 

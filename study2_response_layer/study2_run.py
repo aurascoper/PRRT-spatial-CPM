@@ -9,13 +9,13 @@ Fixed objects (Study 1, hashed), paths from the repository root:
   data/geometry_pitch40.npz   (activity/cell/mask map, sha pinned in study1 meta json)
   study1/runs/ref_p40_h3.bin  (128M-decay Geant4 REF dose field, MeV/voxel)
 """
-import json, os, sys   # one line: citations into this file are by line number
+import json, os   # one line: citations into this file are by line number
 import hashlib
 import numpy as np
 
 OUT = os.path.dirname(os.path.abspath(__file__))     # study2_response_layer/
 BASE, DATA = os.path.join(OUT, "..", "study1"), os.path.join(OUT, "..", "data")
-CONTROL = next((a[10:] for a in sys.argv[1:] if a.startswith("--control=")), "")  # planted defects, see controls.py
+
 # ---- Declared parameters (PROTOCOL v1.0, fixed before running) -------------
 ALPHA = 0.24          # Gy^-1, NCI-H69 EBRT fit, Tamborino 2025 Table 1
 BETA = 0.06           # Gy^-2, same source
@@ -87,14 +87,14 @@ geo_meta = json.load(open(f"{BASE}/geometry_pitch40_meta.json"))
 geo_sha = sha256_file(f"{DATA}/geometry_pitch40.npz")
 gate("G7a geometry hash", geo_sha == geo_meta["npz_sha256"],
      f"meta {geo_meta['npz_sha256'][:16]}.. vs file {geo_sha[:16]}..")
-REF_BIN = os.environ.get("STUDY2_REF_BIN", f"{BASE}/runs/ref_p40_h3.bin")   # controls.py substitutes a field here
+REF_BIN = f"{BASE}/runs/ref_p40_h3.bin"
 ref_meta = json.load(open(REF_BIN[:-4] + ".json"))   # the sidecar of the file G7b hashes
 ref_sha = sha256_file(REF_BIN)
-_pins_f = os.environ.get("STUDY2_PINS", f"{OUT}/pins.json")   # the pin lives outside the run's own output (issue #13, fourth review)
+_pins_f = f"{OUT}/pins.json"   # the pin lives outside the run's own output, and this run never writes it
 _pins = json.load(open(_pins_f)) if os.path.exists(_pins_f) else {}
-if "--pin" in sys.argv and "ref_p40_h3.bin" not in _pins: _pins["ref_p40_h3.bin"] = ref_sha; json.dump(_pins, open(_pins_f, "w"), indent=1)   # explicit first pin only
-gate("G7b dose-field hash", ref_sha == _pins.get("ref_p40_h3.bin"),
-     f"pinned {str(_pins.get('ref_p40_h3.bin', 'NONE, run once with --pin on the genuine file'))[:16]}.. vs file {ref_sha[:16]}.. ({ref_meta['decays_simulated']} decays; seed {ref_meta.get('seed', 'not recorded')})")
+_pin = _pins.get("ref_p40_h3.bin")   # absent: refuse. A genuine first pin is entered by hand, not by a run
+gate("G7b dose-field hash", ref_sha == _pin,
+     f"pinned {str(_pin or 'NONE, pins.json has no entry')[:16]}.. vs file {ref_sha[:16]}.. ({ref_meta['decays_simulated']} decays; seed {ref_meta.get('seed', 'not recorded')})")
 
 # ---- G5: Lea-Catcheside admissibility --------------------------------------
 T_grid = np.array([1.0, 6.0, 24.0, 96.0, 360.0])
@@ -138,8 +138,6 @@ n_axis = geo_meta["n_voxels_per_axis"]
 assert E.size == n_axis ** 3 == cell_id.size, "dose field shape mismatch"
 E = E.reshape((n_axis, n_axis, n_axis), order="C")   # C-order per ref json units
 E_v = E[viable]                     # MeV/decay at viable-cell sites
-if CONTROL == "flat":   # G6b control: no heterogeneity, only 0.71% MC noise on a flat field
-    E_v = float(E_v.mean()) * (1.0 + 0.0071 * np.random.default_rng(1).standard_normal(n_viable))
 E_mean = float(E_v.mean())
 D_v = DOSE_PRIMARY * E_v / E_mean   # declared scaling: shape * D_mean
 cv_dose = float(D_v.std() / D_v.mean())
@@ -160,8 +158,7 @@ ARM_D_U = [None]   # the uniform dose arm_pair last built; G8 reads it (issue #1
 
 def arm_pair(D_v_field, dose_mean_scale, n_clon, G):
     D_h = dose_mean_scale * D_v_field / D_v_field.mean()
-    # G8's control builds the verdict's own uniform arm from the median
-    D_u = float(np.median(D_h)) if CONTROL == "unif" else float(D_h.mean())
+    D_u = float(D_h.mean())
     ARM_D_U[0] = D_u
     return ln_tcp(D_h, n_clon, G), ln_tcp(np.full(D_h.size, D_u), n_clon, G)
 
@@ -317,8 +314,6 @@ out = {
 }
 if gate_failures:
     print("\nREFUSED-GATED: verdict.json not written; the G7b pin stays as committed")
-elif CONTROL:
-    print(f"\ncontrol={CONTROL}: verdict.json not written")
 else:
     with open(f"{OUT}/verdict.json", "w") as f:
         json.dump(out, f, indent=2)

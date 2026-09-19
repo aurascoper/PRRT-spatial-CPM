@@ -268,8 +268,8 @@ What changes. Three gates, no criterion:
   against a null of 0.198 (p97.5 0.203), 1258x. `verdict.json` records it as
   `noise_null`.
 - G7b compares the REF file's hash with the pin in `pins.json`, a file the
-  runner never writes except on an explicit `--pin` when no pin exists. An
-  absent pin refuses. The fourth review found the earlier form fell back to
+  runner never writes. A genuine first pin is entered by hand. An absent pin
+  refuses. The fourth review found the earlier form fell back to
   the hash of the file it had just read when `verdict.json` was absent, so a
   garbage field pinned itself in a clean directory.
 - G8 now compares the heterogeneous arm's total with the uniform arm that
@@ -282,13 +282,18 @@ What changes. Three gates, no criterion:
   2026-09-18.
 
 Each gate has a planted defect that it must refuse, run by
-`study2_response_layer/controls.py`: a flat noisy field (G6b) and a uniform arm
-built from the median (G8) through `--control=`; and two attacks on G7b along
-the real, unflagged path, a garbage field substituted through `STUDY2_REF_BIN`
-and run twice (both runs REFUSED-GATED, which holds only if the first wrote no
-`verdict.json`), then the same field with no pin file, which must be refused
-rather than self-pinned. Both `verdict.json` and `pins.json` are byte-identical
-afterwards. The third review found the earlier form of
+`study2_response_layer/controls.py`. The runner itself carries no branch that
+exists only for testing: no flag, no environment override, no control switch.
+`controls.py` copies the files the runner reads into a scratch directory,
+mutates them there, checks the mutation applied, and runs the untouched runner
+against the copy. Cases: a flat field with 0.71% noise under a matching pin
+(G6b); the verdict's own uniform arm built from the median, a source mutation
+(G8); a garbage field run twice, where the second refusal holds only if the
+first wrote nothing (G7b); the same field with `pins.json` and `verdict.json`
+deleted, which must refuse rather than self-pin (G7b). The first check is the
+stopping criterion itself, a grep of the runner for test-only hooks. The
+fourth and fifth reviews of 2026-09-18 each found a hook of that kind reused
+as a bypass; there are none left to reuse. The third review found the earlier form of
 this check could not fail, because every control run took the `--control`
 branch and never reached the guard it protected.
 

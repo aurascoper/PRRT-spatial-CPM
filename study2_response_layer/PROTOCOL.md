@@ -29,7 +29,8 @@ on the exact transport field Study 1 validated.
 1. Geometry/activity: study1_dpk_vs_mc/geometry_pitch40.npz,
    sha256 = a6883b84a577dd5db888c9d4292cf68897a68d840b64a427061bc70a2d60a170
    (from geometry_pitch40_meta.json). 25^3 voxels at 40 um pitch, 13,978
-   viable cells (cell_id > 0), tissue masks, lognormal activity map
+   cells (cell_id > 0; 11,000 in the viable band, 2,978 in the stromal band,
+   the tissue label has no computational role), lognormal activity map
    (sigma_e = 0.6, activity CV = 0.658). Same hashed object as Study 1.
 2. Dose field: study1_dpk_vs_mc/runs/ref_p40_h3.bin (128M decays, seed
    20260918, Geant4 11.4.2, ENSDF RDM 6.1.2), units MeV/voxel, C-order,

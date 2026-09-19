@@ -2,7 +2,8 @@
 """Study 1 verdict engine: DPK vs REF residuals with all pre-declared controls.
 
 Controls implemented (PROTOCOL.md v1.1):
-  C1 REF ladder: p95 |ΔD|/D between h1 and h2 REF runs over the clinical core
+  C1 REF ladder: p95 |ΔD|/D between the two highest-statistics REF runs present
+     (v1.6; h3 vs h4 in this repository) over the clinical core
      must be < 2.0% or NO VERDICT is issued (refuse, don't pass).
   C2 wrong-kernel negative control: comparing REF vs a kernel with the WRONG
      spectral content (monoenergetic 497 keV point kernel built by replacing
@@ -35,7 +36,7 @@ def load_ref(p, lvl):
     meta = json.load(open(f"{BASE}/runs/ref_p{p}_h{lvl}.json"))
     e = np.fromfile(f"{BASE}/runs/ref_p{p}_h{lvl}.bin", dtype=np.float64)
     n = meta["n"]
-    return e.reshape(n, n, n), meta
+    return e.reshape(n, n, n) / meta["decays_simulated"], meta   # per decay (v1.6)
 
 def load_dpk(p):
     d = np.load(f"{BASE}/runs/dpk_p{p}.npy")
@@ -61,8 +62,14 @@ def verdict(p):
     # necrotic/void voxels whose dose is sparse cross-dose with ~1-event
     # Poisson noise — not the declared endpoint. Cells exist only on
     # occupied voxels (cell_id > 0), which is exactly the declared scope.
-    r1, m1 = load_ref(p, 1)
-    r2, m2 = load_ref(p, 2)
+    # v1.6: C1 on the two highest-statistics REF runs present (ties: the later run)
+    lv = sorted((l for l in (1, 2, 3, 4) if os.path.exists(f"{BASE}/runs/ref_p{p}_h{l}.json")),
+                key=lambda l: (json.load(open(f"{BASE}/runs/ref_p{p}_h{l}.json"))["decays_simulated"], l))[-2:]
+    if len(lv) < 2:
+        raise FileNotFoundError(f"fewer than two REF runs for pitch {p}")
+    r1, m1 = load_ref(p, lv[0])
+    r2, m2 = load_ref(p, lv[1])
+    out["C1_pair"] = [f"h{lv[0]}", f"h{lv[1]}"]
     gmask = np.load(f"{DATA}/geometry_pitch{p}.npz")["cell_id"] > 0
     core = core_mask(r2) & core_mask(r1) & gmask
     denom = np.where(core, np.maximum(r2, 1e-30), np.nan)
@@ -72,13 +79,16 @@ def verdict(p):
     if not out["C1_pass"]:
         out["verdict"] = "REF-UNCONVERGED — no DPK verdict issued"
         return out
-    # residuals vs h2 (highest-statistics REF)
+    # residuals vs the highest-statistics REF, both arms per decay (v1.6: this
+    # path was unreachable while C1 refused, and compared raw MeV sums that
+    # scale with decays_simulated against a DPK field scaled by total activity)
     d, dmeta = load_dpk(p)
-    ref = r2
+    d = d / float(np.load(f"{DATA}/geometry_pitch{p}.npz")["activity"].sum())
+    ref = r2                                    # load_ref is per decay (v1.6)
     core = core_mask(ref)
     # total-energy conservation check
-    out["total_ref_MeV"] = float(ref.sum())
-    out["total_dpk_MeV"] = float(d.sum())
+    out["total_ref_MeV_per_decay"] = float(ref.sum())
+    out["total_dpk_MeV_per_decay"] = float(d.sum())
     # voxel residual over core
     rv = (d - ref)[core] / ref[core]
     out["voxel_p50_p95_p99_abs"] = [float(np.percentile(np.abs(rv), 50)),
@@ -118,7 +128,7 @@ if __name__ == "__main__":
             results[p] = verdict(p)
             r = results[p]
             print(f"--- pitch {p} um ---")
-            for k in ["C1_ref_ladder_p95", "C1_pass", "total_ref_MeV", "total_dpk_MeV",
+            for k in ["C1_ref_ladder_p95", "C1_pass", "C1_pair", "total_ref_MeV_per_decay", "total_dpk_MeV_per_decay",
                       "voxel_p50_p95_p99_abs", "cell_p50_p95_p99_abs", "n_cells_in_core",
                       "C4_hash_ok", "verdict"]:
                 print(f"   {k}: {r.get(k)}")

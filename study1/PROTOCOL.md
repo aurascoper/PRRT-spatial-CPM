@@ -280,3 +280,63 @@ seed 20260916), ref_p40_h1/h2 (32M, seeds 20260916/17), ref_p40_h3 (128M,
 seed 20260918), uniform-box control (32M, seed 20260920), wrong-kernel
 control (analytic). All validation gates passed: per-decay anchor 0.1353
 (kernel mode), centrosymmetry 1.0000, delta-alignment exact.
+
+## v1.6 amendment (2026-09-18, pre-declared BEFORE the h4 run; issue #10)
+
+Why. v1.5 passed C1 on an inferred figure: 32M-vs-128M p95 = 2.62%, times
+0.447 (the 1/sqrt(N) factor for one 128M run's own noise), = 1.17%. No
+amendment declared that inference, and `analyze.py` as coded evaluates C1 on
+the measured h1-vs-h2 pair (3.28%) and refuses. Every residual measurable from
+the committed runs is above 2%: 3.28% (32M vs 32M), 2.62% and 2.58% (32M vs
+128M), 2.01% (pooled 64M vs 128M). C1 as worded needs a measured pair under 2%.
+
+The run. h4: 128M decays, seed 20260919, geometry hash a6883b84 (unchanged),
+same application, physics list and cuts as h3. Nothing else is re-run.
+
+The test. C1 is evaluated on the highest-statistics pair, h3 vs h4: ladder
+p95 of |D_h3 - D_h4| / D_h4 over the cell endpoint in the clinical core, the
+v1.2 form that `analyze.py` implements. Threshold 2%, unchanged. The
+1/sqrt(N) model predicts 1.64% for this pair.
+
+Both outcomes, declared now:
+
+- p95 < 2%: C1 PASS as a measurement. The v1.5 inferred figure is retired and
+  `analyze.py` reads the highest-statistics pair present. FAIL-DPK is
+  unchanged; the cell p95 of 23.8% is more than seven times any residual here.
+- p95 >= 2%: C1 FAIL as worded at this statistics level. The study reports
+  FAIL-DPK with C1 unmet, and no inferred figure substitutes for the
+  measurement. A further reference run would need its own amendment.
+
+No other number, threshold or file in this study changes under this amendment.
+
+### v1.6 result (2026-09-18, after the run)
+
+h4 ran as declared: 128M decays, seed 20260919, geometry hash a6883b84,
+committed as `runs/ref_p40_h4.bin` and `.json` (sha256 of the bin begins
+07e9be71). Wall clock about eight minutes on 24 threads.
+
+C1 on h3 vs h4, cell endpoint, clinical core: p95 = 1.62%. Threshold 2%.
+C1 PASS as a measurement; declared outcome A applies. The 1/sqrt(N) model
+predicted 1.64%. Consistency: h1 vs h4 2.58%, h2 vs h4 2.58% (h1 and h2 vs h3
+were 2.58% and 2.62%). Total energy per decay, h4 over h3: 0.999998.
+
+`analyze.py` now evaluates C1 on the two highest-statistics REF runs present
+and records the pair as `C1_pair`; here that is h3 vs h4. The v1.5 inferred
+figure of 1.17% is retired from the verdict path; `final_analysis.py` still
+prints it, labelled as an inference. FAIL-DPK is unchanged: cell p95 of 23.8%
+against a measured reference residual of 1.62%, a factor of 14.7.
+
+One more defect surfaced when C1 first passed: `analyze.py`'s DPK residual
+path, unreachable until then, compared the REF's raw MeV sums (which scale
+with `decays_simulated`) against a DPK field scaled by total activity. It now
+puts both arms on a per-decay basis, the convention `final_analysis.py` always
+used. Its pitch-40 cell p95 is then 23.8%, the published figure, and its
+verdict FAIL-DPK is issued for the stated reason.
+
+Two more corrections from the second review of 2026-09-18. `load_ref` returned
+raw MeV sums, so the C1 ladder was right only when both runs had the same decay
+count; with h4 absent the new selection rule pairs h2 with h3 and read 75.5%
+where the per-decay value is 2.62%. `load_ref` now divides by
+`decays_simulated`, so C1 and the DPK path share one basis. And
+`ref_p40_h4.json` carries `seed: 20260919`, added by hand from the declared
+argv, because the application does not emit it (issue #9).

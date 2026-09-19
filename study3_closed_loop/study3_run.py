@@ -143,7 +143,7 @@ def window(occ, e, sf_slot, rng, sigma_div):
     if sf_slot is not None:
         live = np.flatnonzero(occ)
         u = rng.random(live.size)
-        died = live[u >= sf_slot[live]]
+        died = live[u > sf_slot[live]]
         occ[died] = False
         e[died] = np.nan
         deaths = int(died.size)

@@ -9,13 +9,13 @@ Fixed objects (Study 1, hashed), paths from the repository root:
   data/geometry_pitch40.npz   (activity/cell/mask map, sha pinned in study1 meta json)
   study1/runs/ref_p40_h3.bin  (128M-decay Geant4 REF dose field, MeV/voxel)
 """
-import json, os   # one line: citations into this file are by line number
+import json, os, sys   # one line: citations into this file are by line number
 import hashlib
 import numpy as np
 
 OUT = os.path.dirname(os.path.abspath(__file__))     # study2_response_layer/
 BASE, DATA = os.path.join(OUT, "..", "study1"), os.path.join(OUT, "..", "data")
-
+CONTROL = next((a[10:] for a in sys.argv[1:] if a.startswith("--control=")), "")  # planted defects, see controls.py
 # ---- Declared parameters (PROTOCOL v1.0, fixed before running) -------------
 ALPHA = 0.24          # Gy^-1, NCI-H69 EBRT fit, Tamborino 2025 Table 1
 BETA = 0.06           # Gy^-2, same source
@@ -27,7 +27,7 @@ DOSE_PRIMARY = 10.0
 N_ENSEMBLE = 200
 SEED_ENSEMBLE = 20260919
 REF_NOISE_P95 = 0.0117                     # Study 1: REF self-noise p95 = 1.17%
-NOISE_SIGMA = REF_NOISE_P95 / 1.645        # half-normal p95 -> sigma mapping
+NOISE_SIGMA = REF_NOISE_P95 / 1.645        # one-sided normal 95% quantile as declared in v1.0 (a half-normal p95 would use 1.960)
 MU = np.log(2.0) / T_REP
 NCLON_INVARIANCE_TOL = 1e-9
 
@@ -90,11 +90,11 @@ gate("G7a geometry hash", geo_sha == geo_meta["npz_sha256"],
 
 ref_meta = json.load(open(f"{BASE}/runs/ref_p40_h3.json"))
 ref_sha = sha256_file(f"{BASE}/runs/ref_p40_h3.bin")
-# No stored reference hash exists for the REF bin (Study 1 pinned the npz and
-# the DPK only); this run PINS it for all future re-use. Declared in protocol
-# execution order step 1 note.
-print(f"GATE G7b dose-field hash: PINNED {ref_sha} "
-      f"(first pin; 128M decays, seed 20260918 per runs/ref_p40_h3.json)")
+_pin_f = f"{OUT}/verdict.json"   # G7b: the pin is the hash the committed verdict recorded (issue #13)
+_pin = json.load(open(_pin_f))["dose_field_descriptors"]["ref_bin_sha256_pinned"] if os.path.exists(_pin_f) else ref_sha
+if CONTROL == "pin": ref_sha = sha256_file(f"{BASE}/runs/ref_p40_h2.bin")   # a different real file must be refused
+gate("G7b dose-field hash", ref_sha == _pin,
+     f"pinned {_pin[:16]}.. vs file {ref_sha[:16]}.. ({ref_meta['decays_simulated']} decays; no sidecar records a seed)")
 
 # ---- G5: Lea-Catcheside admissibility --------------------------------------
 T_grid = np.array([1.0, 6.0, 24.0, 96.0, 360.0])
@@ -138,6 +138,8 @@ n_axis = geo_meta["n_voxels_per_axis"]
 assert E.size == n_axis ** 3 == cell_id.size, "dose field shape mismatch"
 E = E.reshape((n_axis, n_axis, n_axis), order="C")   # C-order per ref json units
 E_v = E[viable]                     # MeV/decay at viable-cell sites
+if CONTROL == "flat":   # G6b control: no heterogeneity, only 0.71% MC noise on a flat field
+    E_v = float(E_v.mean()) * (1.0 + 0.0071 * np.random.default_rng(1).standard_normal(n_viable))
 E_mean = float(E_v.mean())
 D_v = DOSE_PRIMARY * E_v / E_mean   # declared scaling: shape * D_mean
 cv_dose = float(D_v.std() / D_v.mean())
@@ -147,6 +149,7 @@ print(f"\nViable cells: {n_viable}; dose field over viable cells: "
 
 # ---- G4: uniform-field assembler gate --------------------------------------
 D_unif_field = np.full(n_viable, D_v.mean())
+if CONTROL == "unif": D_unif_field = np.full(n_viable, float(np.median(D_v)))   # G8 control: wrong uniform arm
 ln_het_unif_input = ln_tcp(D_unif_field, 1.0, G96)
 ln_uni_unif_input = -float(np.sum(sf(D_unif_field, G96)))  # independent path
 gate("G4 uniform-field assembler",
@@ -158,7 +161,7 @@ D_unif = float(D_v.mean())
 G96_val = G96
 # total viable dose, both arms, in Gy*cells
 tot_het = float(D_v.sum())
-tot_uni = D_unif * n_viable
+tot_uni = float(D_unif_field.sum())   # the array the uniform arm uses, not mean*n (issue #13)
 gate("G8 energy bookkeeping", abs(tot_het - tot_uni) <= 1e-12 * tot_het,
      f"total viable dose het {tot_het:.9f} vs uniform {tot_uni:.9f} Gy*cells")
 
@@ -234,8 +237,21 @@ crit_b = gap_det_1 > 2.0 * sig
 gate("G6/C(b) noise ensemble", crit_b,
      f"divergence D (N_clon=1) = {gap_det_1:.6g} survivors vs ensemble "
      f"std = {sig:.6g} (mean {gaps.mean():.6g}); ratio = "
-     f"{gap_det_1 / sig:.1f}x the 2-sigma bar; "
+     f"{gap_det_1 / (2.0 * sig):.1f}x the 2-sigma bar; "
      f"sigma={NOISE_SIGMA:.5f} (p95 {REF_NOISE_P95:.4f}), n={N_ENSEMBLE}")
+
+# ---- G6b: noise-only null (issue #11) ---------------------------------------
+# A flat field re-noised produces a gap too, by the same convexity. Criterion (b)
+# measures the real gap's precision; this gate measures it against that null.
+gaps0 = np.empty(N_ENSEMBLE)
+for r in range(N_ENSEMBLE):
+    Dr = D_unif_field * xi[r]
+    gaps0[r] = float(np.sum(sf(Dr, G96_val))) - float(np.sum(sf(np.full(Dr.size, float(Dr.mean())), G96_val)))
+null_hi = float(np.percentile(gaps0, 97.5))
+ratio_null = gap_det_1 / float(gaps0.mean())
+gate("G6b noise-only null", gap_det_1 > 2.0 * null_hi,
+     f"real gap {gap_det_1:.6g} vs noise-only gap {gaps0.mean():.6g} (p97.5 {null_hi:.6g}); "
+     f"{ratio_null:.0f}x the noise-only gap")
 
 # ---- Verdict -----------------------------------------------------------------
 primary = results[f"D{DOSE_PRIMARY:g}_N100"]
@@ -289,11 +305,18 @@ out = {
         "p2p5": float(np.percentile(gaps, 2.5)),
         "p97p5": float(np.percentile(gaps, 97.5)),
     },
+    "noise_null": {
+        "gap_mean": float(gaps0.mean()), "gap_std": float(gaps0.std(ddof=1)),
+        "gap_p97p5": null_hi, "ratio_real_to_null": float(ratio_null),
+    },
     "G_curve": {f"T={t:g}h": float(gg) for t, gg in zip(T_grid, G_vals)},
 }
-with open(f"{OUT}/verdict.json", "w") as f:
-    json.dump(out, f, indent=2)
-print(f"\nWrote {OUT}/verdict.json")
+if CONTROL:
+    print(f"\ncontrol={CONTROL}: verdict.json not written")
+else:
+    with open(f"{OUT}/verdict.json", "w") as f:
+        json.dump(out, f, indent=2)
+    print(f"\nWrote {OUT}/verdict.json")
 
 # SF distribution summaries at primary level (for the report)
 s_het = sf(D_v, G96_val)

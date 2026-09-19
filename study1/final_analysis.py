@@ -1,5 +1,5 @@
 import numpy as np, json
-import os
+import os, sys
 BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
 
@@ -20,7 +20,9 @@ print()
 # by escape and is NOT gated against the kernel number — v1.4 correction)
 km = json.load(open("runs/kernel_p40.json"))
 k = np.fromfile("runs/kernel_p40.bin", dtype=np.float64)/km["decays_simulated"]
-print(f"Kernel full-support total: {k.sum():.5f} MeV/decay (>= 0.1352 smoke anchor: OK)")
+anchor_ok = k.sum() >= 0.1352
+print(f"Kernel full-support total: {k.sum():.5f} MeV/decay (>= 0.1352 smoke anchor: {'OK' if anchor_ok else 'FAIL'})")
+if not anchor_ok: sys.exit("REFUSED: kernel anchor below 0.1352 MeV/decay (the v1.4 octant defect was 1/8)")
 
 # GATE 2: energy accounting, DPK vs REF over the same box
 dpk = np.load("runs/dpk_p40.npy").ravel()
@@ -36,7 +38,7 @@ f_23 = (r2[core]-r3[core])/np.maximum(r3[core],1e-30)
 p95_AB = float(np.percentile(np.abs(f_AB),95))
 p95_23 = float(np.percentile(np.abs(f_23),95))
 print(f"LADDER: 32M-A vs 32M-B p95 = {p95_AB:.4f} | 32M vs 128M p95 = {p95_23:.4f}")
-print(f"  -> REF(128M) self-noise p95 ~= {p95_23*0.447:.4f} (below 2%: C1 PASS)")
+print(f"  -> REF(128M) self-noise p95 inferred = {p95_23*0.447:.4f} (1/sqrt(N) inference, not a measurement; C1 is analyze.py's, see PROTOCOL v1.6)")
 
 # DPK vs REF, cell endpoint
 r = (dpk_pd[core]-r3[core])/r3[core]
@@ -56,7 +58,9 @@ kw /= kw.sum()
 gact = g["activity"].astype(np.float64)
 dw = fftconvolve(gact, kw, mode="same", axes=(0,1,2)).ravel()/act.sum()
 rw = (dw[core]-r3[core])/r3[core]
-print(f"NEGATIVE CONTROL wrong-kernel p95 = {float(np.percentile(np.abs(rw),95)):.4f} (>> 2%: pipeline can detect bad kernels)")
+p95_neg = float(np.percentile(np.abs(rw),95))
+print(f"NEGATIVE CONTROL wrong-kernel p95 = {p95_neg:.4f} (>> 2%: pipeline can detect bad kernels: {'OK' if p95_neg > 0.02 else 'FAIL'})")
+if p95_neg <= 0.02: sys.exit("REFUSED: the wrong kernel passed the 2% criterion; the pipeline cannot detect bad kernels")
 
 # VERDICT
 THRESH = 0.02

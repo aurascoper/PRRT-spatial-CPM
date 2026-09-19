@@ -72,13 +72,15 @@ KPHYS = D_MEAN_TARGET / (A_ADMIN / CAP)
 def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
             dose="hetero", inherit=None, uptake=None,
             bank_dose=False, sf_log=None,
-            dying_divides=False, parent_log=None):
+            dying_divides=False, parent_log=None,
+            arrest_frac=0.0, draw_only_on_division=False):
     """One arm of n_cycles. Returns (mean ln e per cycle start, deaths per cycle).
 
     closed     True re-normalizes activity over the living each cycle.
                False freezes the cycle-1 voxel map and re-applies it blind, so a
                dead site keeps its declared activity (study3_run.py:20-23).
-    dose       "hetero", "uniform" (every site D_MEAN_TARGET) or "zero".
+    dose       "hetero", "uniform" (every site D_MEAN_TARGET), "zero" or
+               "lethal" (every site LETHAL_GY).
     inherit    daughter rule, for the negative controls.
     uptake     weight rule, for the negative controls.
     bank_dose  the A2 defect, for gate G-B's control: carry each site's dose
@@ -88,6 +90,10 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
                cycle's survival draw stay in the parent pool during refill.
     parent_log if a list, receives one bool per division: True when the parent
                failed its survival draw in the same cycle.
+    arrest_frac  share of the founders held below division volume: they are
+               never division parents (gate G-Q).
+    draw_only_on_division  the A1 defect, for G-Q's control: an arrested
+               cell never attempts division, so it is never drawn.
     """
     rng = random.Random(seed)
     inherit = inherit or (lambda ep, s, r: ep * math.exp(s * r.gauss(0.0, 1.0)))
@@ -96,6 +102,7 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
     e = [1.0] * CAP if uniform_e else list(E_T0)
     acc = [0.0] * CAP      # dose the survival check reads; A2 says it is consumed
     occupied = list(range(CAP))
+    arrested = set(range(int(CAP * arrest_frac)))   # G-Q: never a parent
     free = []
     frozen_w = None
     ln_means, death_counts = [], []
@@ -109,6 +116,8 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
             D = [0.0] * CAP
         elif dose == "uniform":
             D = [D_MEAN_TARGET] * CAP
+        elif dose == "lethal":
+            D = [LETHAL_GY] * CAP
         else:
             w = [0.0] * CAP
             for i in occupied:
@@ -128,6 +137,8 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
         died = []
         sf_sum = 0.0
         for i in list(occupied):
+            if draw_only_on_division and i in arrested:
+                continue                   # A1 defect: never attempts, never drawn
             sf = math.exp(-(ALPHA * acc[i] + BETA * G96 * acc[i] ** 2))
             sf_sum += sf
             if rng.random() > sf:          # spec §4: dies iff RNG > SF
@@ -150,6 +161,10 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
             # this cycle's dead in the pool; e[] is never cleared for a dead
             # site here, so a dead parent yields daughters with no error raised.
             pool = (occupied + sorted(dead)) if dying_divides else occupied
+            if arrested:
+                pool = [i for i in pool if i not in arrested]
+                if not pool:
+                    break
             parents = rng.sample(pool, k)
             for p in parents:
                 if parent_log is not None:
@@ -232,21 +247,23 @@ def gate_Q(draw_only_on_division=False):
     If the survival draw is gated on that attempt, the cell absorbs any dose and
     stays viable. The committed reference does not have the hole: its death
     sweep is unconditional (study3_run.py:142-149).
+
+    The gate drives run_arm's real sweep at LETHAL_GY with ARREST_FRAC of the
+    founders arrested, and counts the first cycle's deaths. Until 2026-09-18 it
+    looped over a local flag and guarded no code path, the shape Correction 7
+    removed from G-B.
     """
-    rng = random.Random(20261301)
     n_arrested = int(CAP * ARREST_FRAC)
-    arrested = set(range(n_arrested))
+    _, deaths = run_arm(20261301, closed=True, dose="lethal",
+                        arrest_frac=ARREST_FRAC,
+                        draw_only_on_division=draw_only_on_division)
     sf = math.exp(-(ALPHA * LETHAL_GY + BETA * G96 * LETHAL_GY ** 2))
-    deaths = 0
-    for i in range(CAP):
-        if draw_only_on_division and i in arrested:
-            continue                      # never attempts division, never drawn
-        if rng.random() > sf:              # spec §4: dies iff RNG > SF
-            deaths += 1
-    ok = deaths == CAP
+    if n_arrested == 0:
+        return False, ["VACUOUS: no cell arrested"]
+    ok = deaths[0] == CAP
     return ok, [f"{LETHAL_GY:g} Gy, SF = {sf!r}",
                 f"{n_arrested} of {CAP} cells arrested below division volume",
-                f"deaths {deaths} of {CAP} (every exposed cell must die)"]
+                f"deaths {deaths[0]} of {CAP} in cycle 1 (every exposed cell must die)"]
 
 
 # ---- gate G-M: a cell that failed its draw never divides --------------------

@@ -248,3 +248,38 @@ worked; none of them is the physics. Recorded in the Study-1 style:
    ((alpha + 2*beta*G*D)^2 > 2*beta*G), so heterogeneity RAISES mean
    clonogen survival and LOWERS TCP relative to the uniform assumption —
    the Mellhammar direction, now with its mechanism named.
+## v1.2 amendment (2026-09-18, after the verdict; issues #11 and #13)
+
+What the triage of 2026-09-18 found. Criteria (a), (c) and (d) follow from the
+LQ form for any dose field that is not exactly constant: SF is convex for all
+D >= 0 because alpha^2 = 0.0576 exceeds 2*beta*G = 0.00529, so Jensen's
+inequality fixes their direction. Criterion (b) compares the gap with its own
+spread under re-noising, which measures the gap's precision. Substituting the
+REF field with a flat field carrying 0.71% Monte Carlo noise gave
+PASS-DIVERGENCE at 48.7x criterion (b); random garbage gave 7503x. Gate G7b
+printed the hash it found and compared it with nothing. Gate G8 compared a sum
+with mean times count, an identity.
+
+What changes. Three gates, no criterion:
+
+- G6b, noise-only null: the same 200-draw ensemble applied to a flat field at
+  the same mean dose. The real gap must exceed twice the null's 97.5th
+  percentile. On the committed REF field the real gap is 249.361 survivors
+  against a null of 0.198 (p97.5 0.203), 1258x. `verdict.json` records it as
+  `noise_null`.
+- G7b now compares the REF file's hash with the pin the committed
+  `verdict.json` holds. The first run pinned; every later run compares.
+- G8 now sums the uniform-arm array the pipeline uses, so a wrongly built
+  uniform arm fails it.
+
+Each gate has a planted defect that it must refuse, run by
+`study2_response_layer/controls.py`: a flat noisy field (G6b), a different
+real file against the pin (G7b), a uniform arm built from the median (G8).
+All three are REFUSED-GATED.
+
+What does not change. The verdict, the four criteria and every number in
+`verdict.json` before this amendment. The `2331x` figure the README once quoted
+was `gap / sigma` printed under a 2-sigma label; the runner now prints
+`gap / (2 sigma)`, which is the 1165x already stored as `ratio_to_2sigma`.
+The noise-sigma mapping keeps its declared 1.645 divisor; the comment now
+says what it is.

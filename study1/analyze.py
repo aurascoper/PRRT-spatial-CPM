@@ -128,7 +128,7 @@ if __name__ == "__main__":
             results[p] = verdict(p)
             r = results[p]
             print(f"--- pitch {p} um ---")
-            for k in ["C1_ref_ladder_p95", "C1_pass", "total_ref_MeV", "total_dpk_MeV",
+            for k in ["C1_ref_ladder_p95", "C1_pass", "C1_pair", "total_ref_MeV_per_decay", "total_dpk_MeV_per_decay",
                       "voxel_p50_p95_p99_abs", "cell_p50_p95_p99_abs", "n_cells_in_core",
                       "C4_hash_ok", "verdict"]:
                 print(f"   {k}: {r.get(k)}")

@@ -308,3 +308,20 @@ Both outcomes, declared now:
   measurement. A further reference run would need its own amendment.
 
 No other number, threshold or file in this study changes under this amendment.
+
+### v1.6 result (2026-09-18, after the run)
+
+h4 ran as declared: 128M decays, seed 20260919, geometry hash a6883b84,
+committed as `runs/ref_p40_h4.bin` and `.json` (sha256 of the bin begins
+07e9be71). Wall clock about eight minutes on 24 threads.
+
+C1 on h3 vs h4, cell endpoint, clinical core: p95 = 1.62%. Threshold 2%.
+C1 PASS as a measurement; declared outcome A applies. The 1/sqrt(N) model
+predicted 1.64%. Consistency: h1 vs h4 2.58%, h2 vs h4 2.58% (h1 and h2 vs h3
+were 2.58% and 2.62%). Total energy per decay, h4 over h3: 0.999998.
+
+`analyze.py` now evaluates C1 on the two highest-statistics REF runs present
+and records the pair as `C1_pair`; here that is h3 vs h4. The v1.5 inferred
+figure of 1.17% is retired from the verdict path; `final_analysis.py` still
+prints it, labelled as an inference. FAIL-DPK is unchanged: cell p95 of 23.8%
+against a measured reference residual of 1.62%, a factor of 14.7.

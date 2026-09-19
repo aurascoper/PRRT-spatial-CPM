@@ -2,7 +2,8 @@
 """Study 1 verdict engine: DPK vs REF residuals with all pre-declared controls.
 
 Controls implemented (PROTOCOL.md v1.1):
-  C1 REF ladder: p95 |ΔD|/D between h1 and h2 REF runs over the clinical core
+  C1 REF ladder: p95 |ΔD|/D between the two highest-statistics REF runs present
+     (v1.6; h3 vs h4 in this repository) over the clinical core
      must be < 2.0% or NO VERDICT is issued (refuse, don't pass).
   C2 wrong-kernel negative control: comparing REF vs a kernel with the WRONG
      spectral content (monoenergetic 497 keV point kernel built by replacing
@@ -61,8 +62,14 @@ def verdict(p):
     # necrotic/void voxels whose dose is sparse cross-dose with ~1-event
     # Poisson noise — not the declared endpoint. Cells exist only on
     # occupied voxels (cell_id > 0), which is exactly the declared scope.
-    r1, m1 = load_ref(p, 1)
-    r2, m2 = load_ref(p, 2)
+    # v1.6: C1 on the two highest-statistics REF runs present (ties: the later run)
+    lv = sorted((l for l in (1, 2, 3, 4) if os.path.exists(f"{BASE}/runs/ref_p{p}_h{l}.json")),
+                key=lambda l: (json.load(open(f"{BASE}/runs/ref_p{p}_h{l}.json"))["decays_simulated"], l))[-2:]
+    if len(lv) < 2:
+        raise FileNotFoundError(f"fewer than two REF runs for pitch {p}")
+    r1, m1 = load_ref(p, lv[0])
+    r2, m2 = load_ref(p, lv[1])
+    out["C1_pair"] = [f"h{lv[0]}", f"h{lv[1]}"]
     gmask = np.load(f"{DATA}/geometry_pitch{p}.npz")["cell_id"] > 0
     core = core_mask(r2) & core_mask(r1) & gmask
     denom = np.where(core, np.maximum(r2, 1e-30), np.nan)

@@ -281,7 +281,12 @@ What changes. Three gates, no criterion:
 Each gate has a planted defect that it must refuse, run by
 `study2_response_layer/controls.py`: a flat noisy field (G6b), a different
 real file against the pin (G7b), a uniform arm built from the median (G8).
-All three are REFUSED-GATED, and `verdict.json` is byte-identical afterwards.
+All three are REFUSED-GATED. A fourth case substitutes a garbage field through
+`STUDY2_REF_BIN` with no control flag and runs twice; both runs are
+REFUSED-GATED, which holds only if the first wrote no `verdict.json`, and the
+file is byte-identical afterwards. The third review found the earlier form of
+this check could not fail, because every control run took the `--control`
+branch and never reached the guard it protected.
 
 What does not change. The verdict, the four criteria and every number in
 `verdict.json` before this amendment. The `2331x` figure the README once quoted

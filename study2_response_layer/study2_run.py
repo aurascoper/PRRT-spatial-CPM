@@ -87,14 +87,14 @@ geo_meta = json.load(open(f"{BASE}/geometry_pitch40_meta.json"))
 geo_sha = sha256_file(f"{DATA}/geometry_pitch40.npz")
 gate("G7a geometry hash", geo_sha == geo_meta["npz_sha256"],
      f"meta {geo_meta['npz_sha256'][:16]}.. vs file {geo_sha[:16]}..")
-
+REF_BIN = os.environ.get("STUDY2_REF_BIN", f"{BASE}/runs/ref_p40_h3.bin")   # controls.py substitutes a field here
 ref_meta = json.load(open(f"{BASE}/runs/ref_p40_h3.json"))
-ref_sha = sha256_file(f"{BASE}/runs/ref_p40_h3.bin")
+ref_sha = sha256_file(REF_BIN)
 _pin_f = f"{OUT}/verdict.json"   # G7b: the pin is the hash the committed verdict recorded (issue #13)
 _pin = json.load(open(_pin_f))["dose_field_descriptors"]["ref_bin_sha256_pinned"] if os.path.exists(_pin_f) else ref_sha
 if CONTROL == "pin": ref_sha = sha256_file(f"{BASE}/runs/ref_p40_h2.bin")   # a different real file must be refused
 gate("G7b dose-field hash", ref_sha == _pin,
-     f"pinned {_pin[:16]}.. vs file {ref_sha[:16]}.. ({ref_meta['decays_simulated']} decays; no sidecar records a seed)")
+     f"pinned {_pin[:16]}.. vs file {ref_sha[:16]}.. ({ref_meta['decays_simulated']} decays; seed {ref_meta.get('seed', 'not recorded')})")
 
 # ---- G5: Lea-Catcheside admissibility --------------------------------------
 T_grid = np.array([1.0, 6.0, 24.0, 96.0, 360.0])
@@ -133,7 +133,7 @@ g = np.load(f"{DATA}/geometry_pitch40.npz")
 cell_id = g["cell_id"]
 viable = cell_id > 0
 n_viable = int(viable.sum())
-E = np.fromfile(f"{BASE}/runs/ref_p40_h3.bin", dtype=np.float64) / ref_meta["decays_simulated"]
+E = np.fromfile(REF_BIN, dtype=np.float64) / ref_meta["decays_simulated"]
 n_axis = geo_meta["n_voxels_per_axis"]
 assert E.size == n_axis ** 3 == cell_id.size, "dose field shape mismatch"
 E = E.reshape((n_axis, n_axis, n_axis), order="C")   # C-order per ref json units

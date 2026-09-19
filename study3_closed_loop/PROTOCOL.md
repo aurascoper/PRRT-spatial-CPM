@@ -28,8 +28,8 @@ about absolute TCP in clinical units.
 
 1. Initialization: study1_dpk_vs_mc/geometry_pitch40.npz,
    sha256 = a6883b84... (verified against geometry_pitch40_meta.json at
-   every run start). T0 state: 13,978 viable cells (cell_id > 0),
-   necrotic/stroma masks fixed for the whole study, lognormal expression
+   every run start). T0 state: 13,978 cells (cell_id > 0) in the viable and
+   stromal bands (note at the end, issue #14); masks fixed; lognormal expression
    (mu = 0, sigma = 0.6), activity map shape (CV = 0.658).
 2. Physics engine: study1_dpk_vs_mc/build/study1_app (Geant4 11.4.2, MT,
    ENSDF RDM 6.1.2, the exact binary that passed the Study-1 validation
@@ -72,9 +72,9 @@ about absolute TCP in clinical units.
    assumed — division attempts are Poisson with rate lambda_div =
    ln(2)/T_d per cell per biological day, realized per inter-cycle
    window; the population regrows toward the viable capacity.
-6. Capacity: the T0 viable footprint (13,978 sites) is the carrying
-   capacity. Division requires a free site; daughters inherit e with
-   drift (declared #4). Necrotic/stroma sites are never recolonized.
+6. Capacity: the T0 cellularized footprint (13,978 sites, viable plus stromal
+   bands) is the carrying capacity. Division requires a free site; daughters
+   inherit e with drift (declared #4). Necrotic voxels are never colonized.
 7. Death rule (preprint: death at mitosis entry): a cell that received
    cycle-k dose attempts its FIRST post-exposure division with survival
    probability SF_i; failure = mitotic catastrophe, site cleared. Cells
@@ -115,7 +115,7 @@ about absolute TCP in clinical units.
 
 Deaths are NOT cumulative across cycles without repopulation: with the
 declared doubling time, the ~1,220 cycle-1 survivors (13,978 x mean SF
-= 0.0875 at 10 Gy) repopulate the 13,978-site viable footprint in ~3.5
+= 0.0875 at 10 Gy) repopulate the 13,978-site cellularized footprint in ~3.5
 doublings (~8.5 days), far inside the 8-week window. Every cycle
 therefore STARTS at capacity with ~10 Gy mean dose; the sawtooth
 (plunge, rebound) is per-cycle, and the selection signal is carried by
@@ -293,3 +293,14 @@ inputs — so ONE shared cycle-1 transport run serves all 10 replicates
 and the extinction arm (x100 dose scale on the same field). The
 closed arm transports per (dynamics seed, cycle >= 2): 15 runs.
 Total: 16 transport runs at 8M decays.
+## Note on the cell population (2026-09-18, issue #14; no rule changes)
+
+geometry.py seeds a cell in every viable voxel (11,000) and every stromal
+voxel (2,978); the 1,647 necrotic voxels hold no cell. So the 13,978 cells
+fill the viable and stromal bands, and the tissue label has no computational
+role in this study: stromal cells share the expression draw, uptake and
+dynamics of viable cells. Item 6's former sentence, "Necrotic/stroma sites are
+never recolonized", was true for necrotic voxels only; stromal sites are
+occupied at T0 and refill after death like any other site. Items 1 and 6 were
+reworded in place, with their line count kept, because Amendment A3 of the
+spec cites this file by line number.

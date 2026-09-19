@@ -100,8 +100,9 @@ runs were never made, and `study1/analyze.py` reports them as missing input.
 
 The hashed fixed objects (`data/geometry_pitch40.npz`,
 sha256 `a6883b84...`) pin the synthetic lesion geometry: 25^3 voxels at
-40 um pitch, 13,978 viable cells, lognormal expression (sigma = 0.6),
-declared masks (viable/necrotic/stroma).
+40 um pitch, 13,978 cells across the viable and stromal bands (11,000 and
+2,978; the tissue label has no computational role), lognormal expression
+(sigma = 0.6), declared masks (viable/necrotic/stroma).
 
 ## Declared parameters (not fitted)
 

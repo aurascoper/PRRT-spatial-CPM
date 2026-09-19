@@ -325,3 +325,10 @@ and records the pair as `C1_pair`; here that is h3 vs h4. The v1.5 inferred
 figure of 1.17% is retired from the verdict path; `final_analysis.py` still
 prints it, labelled as an inference. FAIL-DPK is unchanged: cell p95 of 23.8%
 against a measured reference residual of 1.62%, a factor of 14.7.
+
+One more defect surfaced when C1 first passed: `analyze.py`'s DPK residual
+path, unreachable until then, compared the REF's raw MeV sums (which scale
+with `decays_simulated`) against a DPK field scaled by total activity. It now
+puts both arms on a per-decay basis, the convention `final_analysis.py` always
+used. Its pitch-40 cell p95 is then 23.8%, the published figure, and its
+verdict FAIL-DPK is issued for the stated reason.

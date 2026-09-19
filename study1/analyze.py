@@ -79,13 +79,16 @@ def verdict(p):
     if not out["C1_pass"]:
         out["verdict"] = "REF-UNCONVERGED — no DPK verdict issued"
         return out
-    # residuals vs h2 (highest-statistics REF)
+    # residuals vs the highest-statistics REF, both arms per decay (v1.6: this
+    # path was unreachable while C1 refused, and compared raw MeV sums that
+    # scale with decays_simulated against a DPK field scaled by total activity)
     d, dmeta = load_dpk(p)
-    ref = r2
+    d = d / float(np.load(f"{DATA}/geometry_pitch{p}.npz")["activity"].sum())
+    ref = r2 / m2["decays_simulated"]
     core = core_mask(ref)
     # total-energy conservation check
-    out["total_ref_MeV"] = float(ref.sum())
-    out["total_dpk_MeV"] = float(d.sum())
+    out["total_ref_MeV_per_decay"] = float(ref.sum())
+    out["total_dpk_MeV_per_decay"] = float(d.sum())
     # voxel residual over core
     rv = (d - ref)[core] / ref[core]
     out["voxel_p50_p95_p99_abs"] = [float(np.percentile(np.abs(rv), 50)),

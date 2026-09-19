@@ -35,8 +35,14 @@ E_T0 = gdat["activity"].astype(np.float64).ravel(order="C")
 # ---- export cycle-4 state of closed rep0 (declared representative run) ------
 # e_state: reconstruct from the driver is not persisted per-cycle; export the
 # declared T0 map + verdict numbers instead, and save the c4 dose field.
-d4 = np.fromfile(f"{RUNS}/closed_c4_d20261001_dose.bin", dtype=np.float64)
-d1 = np.fromfile(f"{RUNS}/closed_c1_d20261001_dose.bin", dtype=np.float64)
+def dose_per_decay(tag):
+    m = json.load(open(f"{RUNS}/{tag}_dose.json"))
+    return np.fromfile(f"{RUNS}/{tag}_dose.bin", dtype=np.float64) / m["decays_simulated"], m
+d4, m4 = dose_per_decay("closed_c4_d20261001")
+d1, m1 = dose_per_decay("closed_c1_d20261001")
+kphys = verdict["kphys_Gy_per_MeV_per_decay"]
+mean_gy = kphys * float(d1.reshape(n, n, n)[cell_id > 0].mean())
+assert abs(mean_gy - 10.0) < 1e-6, f"cycle-1 viable mean dose {mean_gy} Gy, declared 10 Gy (issue #9)"
 np.savez_compressed(f"{DATA}/cycle4_state.npz",
                     cell_id=cell_id,
                     dose_cycle1_per_decay=d1.reshape(n, n, n),
@@ -44,13 +50,14 @@ np.savez_compressed(f"{DATA}/cycle4_state.npz",
                     e_T0_voxel=E_T0.reshape(n, n, n),
                     meta=json.dumps({
                         "geometry_sha256": "a6883b84a577dd5db888c9d4292cf68897a68d840b64a427061bc70a2d60a170",
-                        "dose_units": "MeV/voxel per decay, 8M decays, seed 20260922",
+                        "dose_units": f"MeV/voxel per decay; {m1['decays_simulated']} decays per cycle; "
+                                      f"seeds cycle 1 {m1['seed']}, cycle 4 {m4['seed']}",
                         "kphys_Gy_per_MeV_per_decay": verdict["kphys_Gy_per_MeV_per_decay"],
                         "alpha": 0.24, "beta": 0.06, "G96": 0.044068,
                         "ln_e_drift_closed_mean": verdict["delta_ln_e_closed_mean"],
                         "ln_e_drift_open_mean": verdict["delta_ln_e_open_mean"],
                     }))
-print("exported runs/cycle4_state.npz")
+print(f"exported data/cycle4_state.npz (cycle-1 viable mean {mean_gy:.4f} Gy)")
 
 # ---- Figure 1: expression-proportional activity, cycle 1 vs cycle 4 shape ---
 fig, axes = plt.subplots(1, 2, figsize=(11, 4.6), constrained_layout=True)

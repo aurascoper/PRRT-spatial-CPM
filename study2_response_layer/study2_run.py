@@ -27,7 +27,7 @@ DOSE_PRIMARY = 10.0
 N_ENSEMBLE = 200
 SEED_ENSEMBLE = 20260919
 REF_NOISE_P95 = 0.0117                     # Study 1: REF self-noise p95 = 1.17%
-NOISE_SIGMA = REF_NOISE_P95 / 1.645        # half-normal p95 -> sigma mapping
+NOISE_SIGMA = REF_NOISE_P95 / 1.645        # one-sided normal 95% quantile as declared in v1.0 (a half-normal p95 would use 1.960)
 MU = np.log(2.0) / T_REP
 NCLON_INVARIANCE_TOL = 1e-9
 
@@ -87,14 +87,14 @@ geo_meta = json.load(open(f"{BASE}/geometry_pitch40_meta.json"))
 geo_sha = sha256_file(f"{DATA}/geometry_pitch40.npz")
 gate("G7a geometry hash", geo_sha == geo_meta["npz_sha256"],
      f"meta {geo_meta['npz_sha256'][:16]}.. vs file {geo_sha[:16]}..")
-
-ref_meta = json.load(open(f"{BASE}/runs/ref_p40_h3.json"))
-ref_sha = sha256_file(f"{BASE}/runs/ref_p40_h3.bin")
-# No stored reference hash exists for the REF bin (Study 1 pinned the npz and
-# the DPK only); this run PINS it for all future re-use. Declared in protocol
-# execution order step 1 note.
-print(f"GATE G7b dose-field hash: PINNED {ref_sha} "
-      f"(first pin; 128M decays, seed 20260918 per runs/ref_p40_h3.json)")
+REF_BIN = f"{BASE}/runs/ref_p40_h3.bin"
+ref_meta = json.load(open(REF_BIN[:-4] + ".json"))   # the sidecar of the file G7b hashes
+ref_sha = sha256_file(REF_BIN)
+_pins_f = f"{OUT}/pins.json"   # the pin lives outside the run's own output, and this run never writes it
+_pins = json.load(open(_pins_f)) if os.path.exists(_pins_f) else {}
+_pin = _pins.get("ref_p40_h3.bin")   # absent: refuse. A genuine first pin is entered by hand, not by a run
+gate("G7b dose-field hash", ref_sha == _pin,
+     f"pinned {str(_pin or 'NONE, pins.json has no entry')[:16]}.. vs file {ref_sha[:16]}.. ({ref_meta['decays_simulated']} decays; seed {ref_meta.get('seed', 'not recorded')})")
 
 # ---- G5: Lea-Catcheside admissibility --------------------------------------
 T_grid = np.array([1.0, 6.0, 24.0, 96.0, 360.0])
@@ -133,7 +133,7 @@ g = np.load(f"{DATA}/geometry_pitch40.npz")
 cell_id = g["cell_id"]
 viable = cell_id > 0
 n_viable = int(viable.sum())
-E = np.fromfile(f"{BASE}/runs/ref_p40_h3.bin", dtype=np.float64) / ref_meta["decays_simulated"]
+E = np.fromfile(REF_BIN, dtype=np.float64) / ref_meta["decays_simulated"]
 n_axis = geo_meta["n_voxels_per_axis"]
 assert E.size == n_axis ** 3 == cell_id.size, "dose field shape mismatch"
 E = E.reshape((n_axis, n_axis, n_axis), order="C")   # C-order per ref json units
@@ -153,21 +153,25 @@ gate("G4 uniform-field assembler",
      abs(ln_het_unif_input - ln_uni_unif_input) <= 1e-9 * abs(ln_uni_unif_input),
      "het pipeline on a uniform field == uniform pipeline (machine precision)")
 
+# ---- Arms + scans ------------------------------------------------------------
+ARM_D_U = [None]   # the uniform dose arm_pair last built; G8 reads it (issue #13)
+
+def arm_pair(D_v_field, dose_mean_scale, n_clon, G):
+    D_h = dose_mean_scale * D_v_field / D_v_field.mean()
+    D_u = float(D_h.mean())
+    ARM_D_U[0] = D_u
+    return ln_tcp(D_h, n_clon, G), ln_tcp(np.full(D_h.size, D_u), n_clon, G)
+
 # ---- G8: energy bookkeeping -------------------------------------------------
 D_unif = float(D_v.mean())
 G96_val = G96
-# total viable dose, both arms, in Gy*cells
+# total viable dose, both arms, in Gy*cells. The uniform arm is the one arm_pair
+# builds for the verdict at the primary level, not a separate array (issue #13).
+arm_pair(E_v, DOSE_PRIMARY, 1.0, G96_val)
 tot_het = float(D_v.sum())
-tot_uni = D_unif * n_viable
+tot_uni = ARM_D_U[0] * n_viable
 gate("G8 energy bookkeeping", abs(tot_het - tot_uni) <= 1e-12 * tot_het,
      f"total viable dose het {tot_het:.9f} vs uniform {tot_uni:.9f} Gy*cells")
-
-# ---- Arms + scans ------------------------------------------------------------
-def arm_pair(D_v_field, dose_mean_scale, n_clon, G):
-    D_h = dose_mean_scale * D_v_field / D_v_field.mean()
-    D_u = dose_mean_scale * D_v_field.mean() / D_v_field.mean()  # == mean
-    D_u = float(D_h.mean())
-    return ln_tcp(D_h, n_clon, G), ln_tcp(np.full(D_h.size, D_u), n_clon, G)
 
 results = {}
 all_c = True
@@ -234,8 +238,21 @@ crit_b = gap_det_1 > 2.0 * sig
 gate("G6/C(b) noise ensemble", crit_b,
      f"divergence D (N_clon=1) = {gap_det_1:.6g} survivors vs ensemble "
      f"std = {sig:.6g} (mean {gaps.mean():.6g}); ratio = "
-     f"{gap_det_1 / sig:.1f}x the 2-sigma bar; "
+     f"{gap_det_1 / (2.0 * sig):.1f}x the 2-sigma bar; "
      f"sigma={NOISE_SIGMA:.5f} (p95 {REF_NOISE_P95:.4f}), n={N_ENSEMBLE}")
+
+# ---- G6b: noise-only null (issue #11) ---------------------------------------
+# A flat field re-noised produces a gap too, by the same convexity. Criterion (b)
+# measures the real gap's precision; this gate measures it against that null.
+gaps0 = np.empty(N_ENSEMBLE)
+for r in range(N_ENSEMBLE):
+    Dr = D_unif_field * xi[r]
+    gaps0[r] = float(np.sum(sf(Dr, G96_val))) - float(np.sum(sf(np.full(Dr.size, float(Dr.mean())), G96_val)))
+null_hi = float(np.percentile(gaps0, 97.5))
+ratio_null = gap_det_1 / float(gaps0.mean())
+gate("G6b noise-only null", gap_det_1 > 2.0 * null_hi,
+     f"real gap {gap_det_1:.6g} vs noise-only gap {gaps0.mean():.6g} (p97.5 {null_hi:.6g}); "
+     f"{ratio_null:.0f}x the noise-only gap")
 
 # ---- Verdict -----------------------------------------------------------------
 primary = results[f"D{DOSE_PRIMARY:g}_N100"]
@@ -289,11 +306,18 @@ out = {
         "p2p5": float(np.percentile(gaps, 2.5)),
         "p97p5": float(np.percentile(gaps, 97.5)),
     },
+    "noise_null": {
+        "gap_mean": float(gaps0.mean()), "gap_std": float(gaps0.std(ddof=1)),
+        "gap_p97p5": null_hi, "ratio_real_to_null": float(ratio_null),
+    },
     "G_curve": {f"T={t:g}h": float(gg) for t, gg in zip(T_grid, G_vals)},
 }
-with open(f"{OUT}/verdict.json", "w") as f:
-    json.dump(out, f, indent=2)
-print(f"\nWrote {OUT}/verdict.json")
+if gate_failures:
+    print("\nREFUSED-GATED: verdict.json not written; the G7b pin stays as committed")
+else:
+    with open(f"{OUT}/verdict.json", "w") as f:
+        json.dump(out, f, indent=2)
+    print(f"\nWrote {OUT}/verdict.json")
 
 # SF distribution summaries at primary level (for the report)
 s_het = sf(D_v, G96_val)

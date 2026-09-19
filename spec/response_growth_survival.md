@@ -473,6 +473,22 @@ The port asked one question: whether G-Q covers the guard that stops a dying
 cell from dividing. It does not. Amendment A5 has the answer and both controls.
 The layout hazard H1 is partly open, and `spec/pr_checklist.md` has the detail.
 
+## Correction 11 — the reference killed on `u >= SF`; section 4 and the checker say `>`
+
+**2026-09-18.** Correction 8 aligned `spec/check_selection.py` with section 4,
+rule 3: a cell dies iff `RNG > SF`. The reference, `study3_run.py:146`, still
+read `u >= sf_slot[live]`. Found by the triage of 2026-09-18.
+
+The line now reads `u > sf_slot[live]`. The two forms differ only when a draw
+equals SF exactly. At Study 3's doses SF is never 0.0, so that event has
+probability 2^-53 per draw. The committed run made about 5.6e5 draws, so the
+recorded verdict is unaffected with probability better than 1 - 6e-11. No
+number is re-emitted.
+
+The citations `study3_run.py:142-149` in this file and in the checker cover
+that line. The cited text changed by one character in place; the statement it
+supports, that the death sweep is unconditional, is unchanged.
+
 ---
 
 # Amendments

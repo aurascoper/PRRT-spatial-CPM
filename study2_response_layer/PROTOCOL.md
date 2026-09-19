@@ -249,3 +249,58 @@ worked; none of them is the physics. Recorded in the Study-1 style:
    ((alpha + 2*beta*G*D)^2 > 2*beta*G), so heterogeneity RAISES mean
    clonogen survival and LOWERS TCP relative to the uniform assumption —
    the Mellhammar direction, now with its mechanism named.
+## v1.2 amendment (2026-09-18, after the verdict; issues #11 and #13)
+
+What the triage of 2026-09-18 found. Criteria (a), (c) and (d) follow from the
+LQ form for any dose field that is not exactly constant: SF is convex for all
+D >= 0 because alpha^2 = 0.0576 exceeds 2*beta*G = 0.00529, so Jensen's
+inequality fixes their direction. Criterion (b) compares the gap with its own
+spread under re-noising, which measures the gap's precision. Substituting the
+REF field with a flat field carrying 0.71% Monte Carlo noise gave
+PASS-DIVERGENCE at 48.7x criterion (b); random garbage gave 7503x. Gate G7b
+printed the hash it found and compared it with nothing. Gate G8 compared a sum
+with mean times count, an identity.
+
+What changes. Three gates, no criterion:
+
+- G6b, noise-only null: the same 200-draw ensemble applied to a flat field at
+  the same mean dose. The real gap must exceed twice the null's 97.5th
+  percentile. On the committed REF field the real gap is 249.361 survivors
+  against a null of 0.198 (p97.5 0.203), 1258x. `verdict.json` records it as
+  `noise_null`.
+- G7b compares the REF file's hash with the pin in `pins.json`, a file the
+  runner never writes. A genuine first pin is entered by hand. An absent pin
+  refuses. The fourth review found the earlier form fell back to
+  the hash of the file it had just read when `verdict.json` was absent, so a
+  garbage field pinned itself in a clean directory.
+- G8 now compares the heterogeneous arm's total with the uniform arm that
+  `arm_pair` builds for the verdict at the primary level. Its control builds
+  that arm from the median; the verdict would then move by 29%, and G8
+  refuses it.
+- A REFUSED-GATED run writes no `verdict.json`. Before this rule a gated run
+  rewrote the G7b pin with the hash of the file it had just refused, and a
+  second run of the same file passed. Found by the second review of
+  2026-09-18.
+
+Each gate has a planted defect that it must refuse, run by
+`study2_response_layer/controls.py`. The runner itself carries no branch that
+exists only for testing: no flag, no environment override, no control switch.
+`controls.py` copies the files the runner reads into a scratch directory,
+mutates them there, checks the mutation applied, and runs the untouched runner
+against the copy. Cases: a flat field with 0.71% noise under a matching pin
+(G6b); the verdict's own uniform arm built from the median, a source mutation
+(G8); a garbage field run twice, where the second refusal holds only if the
+first wrote nothing (G7b); the same field with `pins.json` and `verdict.json`
+deleted, which must refuse rather than self-pin (G7b). The first check is the
+stopping criterion itself, a grep of the runner for test-only hooks. The
+fourth and fifth reviews of 2026-09-18 each found a hook of that kind reused
+as a bypass; there are none left to reuse. The third review found the earlier form of
+this check could not fail, because every control run took the `--control`
+branch and never reached the guard it protected.
+
+What does not change. The verdict, the four criteria and every number in
+`verdict.json` before this amendment. The `2331x` figure the README once quoted
+was `gap / sigma` printed under a 2-sigma label; the runner now prints
+`gap / (2 sigma)`, which is the 1165x already stored as `ratio_to_2sigma`.
+The noise-sigma mapping keeps its declared 1.645 divisor; the comment now
+says what it is.

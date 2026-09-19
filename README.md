@@ -86,6 +86,7 @@ python study1/final_analysis.py
 
 # Study 2 (minutes; needs the 128M-decay reference run, study1/runs/ref_p40_h3.bin)
 python study2_response_layer/study2_run.py
+python study2_response_layer/controls.py   # planted defects in a scratch copy; each must be REFUSED-GATED
 
 # Study 3 (16 transport runs x ~75 s + dynamics). Every mode of study3_run.py,
 # the default `gates` included, invokes study1/build/study1_app.

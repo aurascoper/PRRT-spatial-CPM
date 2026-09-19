@@ -171,9 +171,10 @@ naming and use their own. The map:
 5 paired seeds, so both are executable without a transport code. The absolute
 drift there is not the study's and is not meant to be.
 
-Three further gates come from the amendments below and have no counterpart in
-the committed studies: `G-Q` (arrested cells still die), `G-B` (dose is not
-banked across cycles) and `G-H` (no cell hoards the activity).
+Four further gates come from the amendments below and have no counterpart in
+the committed studies: `G-Q` (arrested cells still die), `G-M` (a cell that
+failed its draw never divides), `G-B` (dose is not banked across cycles) and
+`G-H` (no cell hoards the activity).
 
 `spec/pr_checklist.md` states what a port's pull request must declare, which
 tests it must ship, and four hazards specific to the Odin port.
@@ -405,6 +406,73 @@ Below that, report the share and do not treat the cap as a gate.
 cannot exceed the cap. A control fixes the boundary: 50 cells unreachable, 51
 reachable.
 
+## Correction 10 — the Odin port's review round at `f3bf6d6`, and two one-ulp drifts that were ours
+
+**2026-09-18.** The port pushed `ffinkdevs/Biofilms@f3bf6d6` on branch
+`odin-port`, three commits on top of `4788dcd1`. Its 26 tests were run for this
+correction under Odin `dev-2026-09`, at the default level and at `-o:speed`.
+All 26 pass. Some claims were then tested by planting one defect in a scratch
+copy and running the tests again. The table says which were run and which were
+only read.
+
+File and line references are at `f3bf6d6`. Where no file is named, the file is
+`odin/tests/response_test.odin`.
+
+| Gate | What the port does | Tested by |
+|---|---|---|
+| G-D | Lines 270-306 build both arms from one seed. The open arm freezes the cycle-1 dose map and keeps death and refill running. Lines 317-323 assert, 327-334 hold two controls. | Reading. The open-is-closed control asserts `!(contrast > 0.02)`. Tightened to `contrast == 0.0`, it still passes, so the ceiling could be an equality. |
+| G-B | Lines 376-380 accrue 5 Gy per cycle through `response_cycle`. | The A2 reset at `odin/cpm/response.odin:342-346` was deleted. The test fails at line 380. The rejection input at 387-393 is arithmetic, and its own comment says so. |
+| G-S | Lines 239-254 force `sigma_div = 0.1` through the real path at zero dose. | Reading. |
+| G-H | Lines 403-409 run the cap at 56 cells. Lines 426-430 confirm a smaller population reports and does not gate (Correction 9). | Reading. |
+
+Also confirmed by reading: doubling time is `T ln2 / ln(1 + f)` at
+`odin/cpm/response.odin:264-270`. The kill boundary is `u > sf` at
+`response.odin:333`. `CELL_MITOTIC` is set on the success path only, at
+`odin/cpm/sim.odin:408`. The resorb sweep ends every step, at `sim.odin:756-760`.
+
+**Two one-ulp drifts, both in this repository.**
+
+The first is the one the port reported. `spec/reference_vectors.json:11` stores
+`mu_per_h` as `0.4620981203732968`. `ln 2 / 1.5` is `0.46209812037329684`, one
+ulp higher. A port that reads the literal moves `G(24 h)` by one ulp. The port
+now computes `mu` at `response.odin:34`, as `spec/check_vectors.py:28` always
+did. The literal stays. The file declares seven significant digits, and sixteen
+digits cannot round-trip a double.
+
+The second was found while reproducing the port's bit patterns. Section 3 writes
+the standard branch as `2*(x + expm1(-x))/x^2`, and both checkers coded it in
+that order. Studies 2 and 3 code it as `2/(x*x)*(x + expm1(-x))`
+(`study2_run.py:70`, `study3_run.py:78`). The two orders differ by one ulp in
+`G(96 h)`. That becomes five ulp in `SF(20 Gy)` and nine in `SF(40 Gy)`.
+
+The port followed the studies. All 13 of its committed bit patterns reproduce
+here in Python from the studies' order, with `mu` computed. Only 9 of 13
+reproduce from the checkers' old order. Both checkers now use the studies'
+order. No vector moves at seven digits. `check_selection.py` prints the same
+bytes before and after. `check_vectors.py` changes one printed digit:
+`1 / G(96 h)` now ends `...572081`, which is the value in
+`study2_response_layer/verdict.json`.
+
+A port that wants bit parity takes the association from the study code. The
+formula in section 3 does not pin it.
+
+**Three statements in the port that its files do not support.**
+
+- The bit-exact test makes 13 `check()` calls, at lines 95-108. Its comment at
+  lines 88-89 and `odin/README.md:230-231` say fourteen. The vectors file holds
+  fourteen scalars, and `SF(10 Gy)` at `G(96 h)` is two of them, once in the SF
+  table and once under protraction. Coverage is complete. The count is thirteen.
+- `odin/README.md:143` says `tests/fixtures/serial_seed42.csv` reproduces 7/7.
+  No Odin test reads that file. `tests/contract_csv.jl:9` reads it, on the Julia
+  side. The 7/7 is a manual run.
+- The commit message reports a "16-seed ensemble recheck".
+  `odin/compare/ensemble_n40_p6_42-297_odin.csv` holds 256 seeds, 42 to 297, in
+  35,840 rows. No test reads it.
+
+The port asked one question: whether G-Q covers the guard that stops a dying
+cell from dividing. It does not. Amendment A5 has the answer and both controls.
+The layout hazard H1 is partly open, and `spec/pr_checklist.md` has the detail.
+
 ---
 
 # Amendments
@@ -415,6 +483,9 @@ reproduce. One does not, and the reason it does not is recorded here as well.
 
 Each amendment changes a rule, so it is separate from the corrections above,
 which only fixed descriptions of the reference.
+
+A5 came later and from a different source: the Odin port's review round of
+2026-09-18, recorded in Correction 10.
 
 ## A1 — the survival check is forced at the end of the cycle
 
@@ -512,6 +583,60 @@ share of the administered activity every cycle, and refuse above 50x the
 uniform share. Gate `G-H` enforces it, and its control is the `e**4` rule.
 
 *(Correction 9 limits this rule to populations above 50 cells.)*
+
+## A5 — a cell that failed its survival draw never divides
+
+**Confirmed, from the Odin port's review round.** Section 4, rule 3 already says
+a dying cell does not divide. No gate checked it.
+
+G-Q shows that every exposed cell fails its draw at 1000 Gy. It says nothing
+about what a failed cell does next. Under Semantics B the dying cell stays in
+the registry until it is resorbed, so the division loop still visits it.
+
+In the port at `f3bf6d6`, `cell_divide` (`odin/cpm/sim.odin:390-393`) checks that
+the parent is alive and checks no state. One line keeps a dying cell out: the
+state check at `odin/cpm/response.odin:353`. Daughters are born viable. So a
+dying parent above division volume becomes two viable cells, the death is
+erased, and nothing raises an error.
+
+With that line deleted, 25 of the port's 26 tests still pass. The one failure
+is G-D at seed 15, where the open drift reads `+0.0352` and must be negative.
+G-Q passes, because it arrests every cell, and the volume check at
+`response.odin:356` stops each division first. One seed of five in a
+statistical gate is detection by accident. Its message names the open arm, not
+the guard.
+
+**Rule.** A cell in state `dying` is never a division parent, under either
+semantics. A port ships a control aimed at that one line. G-Q keeps its 30%
+arrest (A1).
+
+**Control, port shape.** Build a sim with `v_target = 2`, so founders sit above
+division volume. Assign 1000 Gy and run one `response_cycle`. Require
+`deaths == n_alive`, `divisions == 0` and an unchanged `next_id`. Require first
+that at least one cell is above division volume. Without that, the test reads
+the same whichever check stopped the division. Run against `f3bf6d6`: the port
+as committed passes. With line 353 deleted, the control reports 259 divisions
+and 518 daughter ids.
+
+**Control, this repository's shape.** Semantics A has no volume. The defect
+there is a refill that draws parents from this cycle's dead as well as the living.
+Gate `G-M` in `spec/check_selection.py` logs the parent of every division and
+refuses any parent that failed its draw in that cycle. The letter follows the
+port's `CELL_MITOTIC` state.
+
+| Arm | Deaths | Divisions | Divisions by a failed parent |
+|---|---|---|---|
+| as specified | 6920 | 6920 | 0 |
+| control: the dead stay in the parent pool | 6658 | 6658 | 2786 |
+
+G-M also refuses a regression that no flag selects. With the line that removes
+the dead from the occupied list deleted, it counts 4328.
+
+One difference between the toy arm and the reference matters here. The
+reference sets a dead site's expression to NaN (`study3_run.py:148`), so a dead
+parent there would produce NaN daughters and the run would show it. The toy arm
+never clears that value. A dead parent yields ordinary daughters and no error,
+which is the port's hazard exactly.
 
 ---
 

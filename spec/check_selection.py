@@ -49,7 +49,7 @@ def G_of_T(T_h):
     x = MU_REP * T_h
     if x < 1e-3:
         return 1.0 - x / 3.0 + x * x / 12.0
-    return 2.0 * (x + math.expm1(-x)) / (x * x)
+    return 2.0 / (x * x) * (x + math.expm1(-x))    # association as study3_run.py:78
 
 
 G96 = G_of_T(T_ACT)
@@ -71,7 +71,8 @@ KPHYS = D_MEAN_TARGET / (A_ADMIN / CAP)
 
 def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
             dose="hetero", inherit=None, uptake=None,
-            bank_dose=False, sf_log=None):
+            bank_dose=False, sf_log=None,
+            dying_divides=False, parent_log=None):
     """One arm of n_cycles. Returns (mean ln e per cycle start, deaths per cycle).
 
     closed     True re-normalizes activity over the living each cycle.
@@ -83,6 +84,10 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
     bank_dose  the A2 defect, for gate G-B's control: carry each site's dose
                into the next cycle instead of consuming it at the check.
     sf_log     if a list, receives the mean SF applied to the living each cycle.
+    dying_divides  the A5 defect, for gate G-M's control: cells that failed this
+               cycle's survival draw stay in the parent pool during refill.
+    parent_log if a list, receives one bool per division: True when the parent
+               failed its survival draw in the same cycle.
     """
     rng = random.Random(seed)
     inherit = inherit or (lambda ep, s, r: ep * math.exp(s * r.gauss(0.0, 1.0)))
@@ -141,11 +146,18 @@ def run_arm(seed, closed, sigma_div=SIGMA_DIV, uniform_e=False,
             k = min(rng.binomialvariate(len(occupied), P_STEP), len(free))
             if k == 0:
                 continue
-            parents = rng.sample(occupied, k)
+            # A5: only a cell that passed its draw may divide. The defect keeps
+            # this cycle's dead in the pool; e[] is never cleared for a dead
+            # site here, so a dead parent yields daughters with no error raised.
+            pool = (occupied + sorted(dead)) if dying_divides else occupied
+            parents = rng.sample(pool, k)
             for p in parents:
+                if parent_log is not None:
+                    parent_log.append(p in dead)
                 j = rng.randrange(len(free))
                 free[j], free[-1] = free[-1], free[j]
                 t = free.pop()
+                dead.discard(t)    # a daughter lives here now
                 e[t] = inherit(e[p], sigma_div, rng)
                 acc[t] = 0.0       # A2: a daughter is born with no dose
                 occupied.append(t)
@@ -235,6 +247,34 @@ def gate_Q(draw_only_on_division=False):
     return ok, [f"{LETHAL_GY:g} Gy, SF = {sf!r}",
                 f"{n_arrested} of {CAP} cells arrested below division volume",
                 f"deaths {deaths} of {CAP} (every exposed cell must die)"]
+
+
+# ---- gate G-M: a cell that failed its draw never divides --------------------
+
+def gate_M(dying_divides=False):
+    """Spec section 4, rule 3: on RNG > SF the cell is dying and does not divide.
+
+    G-Q cannot see this. It shows every exposed cell fails its draw; it says
+    nothing about what a failed cell does next. In a port where a dying cell
+    stays in the registry until it is resorbed, the only thing between it and
+    two viable daughters is one state check in the division loop, and a death
+    erased that way raises no error.
+
+    The gate drives run_arm's real refill and logs, for every division, whether
+    the parent had failed its survival draw in that cycle. It refuses any.
+    A run with no deaths or no divisions proves nothing, so it refuses that too.
+    """
+    log = []
+    _, deaths = run_arm(20261501, closed=True, dying_divides=dying_divides,
+                        parent_log=log)
+    bad = sum(log)
+    if not log or not sum(deaths):
+        return False, [f"VACUOUS: {len(log)} divisions, {sum(deaths)} deaths"]
+    ok = bad == 0
+    return ok, [f"{sum(deaths)} deaths and {len(log)} divisions over "
+                f"{len(deaths)} cycles",
+                f"divisions by a parent that failed its draw that cycle: "
+                f"{bad} (must be 0)"]
 
 
 # ---- gate G-B: dose is consumed by the check, never banked ------------------
@@ -352,6 +392,8 @@ def run_controls():
     cases = [
         ("G-Q", lambda: gate_Q(draw_only_on_division=True),
          "survival drawn only when a cell attempts division"),
+        ("G-M", lambda: gate_M(dying_divides=True),
+         "this cycle's dead cells stay in the parent pool"),
         ("G-B", lambda: gate_B(bank_dose=True),
          "dose banked across cycles on the real sweep"),
         ("G-H", lambda: gate_H(power=4.0),
@@ -404,7 +446,8 @@ def main():
           f"{len(SEEDS)} seeds, G(96 h) = {G96:.6f}")
     fails = []
     for name, fn in (("G-S", gate_S), ("G-D", gate_D),
-                     ("G-Q", gate_Q), ("G-B", gate_B), ("G-H", gate_H)):
+                     ("G-Q", gate_Q), ("G-M", gate_M), ("G-B", gate_B),
+                     ("G-H", gate_H)):
         ok, detail = fn()
         print(f"  {'PASS' if ok else 'FAIL'} {name}")
         for d in detail:

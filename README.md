@@ -52,12 +52,12 @@ declares the two acceptable death/refill semantics.
 
 ```bash
 python3 spec/check_vectors.py --controls     # vectors + gates G-N, G-O, G-P, G-C
-python3 spec/check_selection.py --controls   # gates G-S and G-D, reduced lattice
+python3 spec/check_selection.py --controls   # six population gates, reduced lattice
 ```
 
 The first asserts every vector in the spec and runs the four closed-form gates.
-The second runs five population gates on 2000 sites and 5 paired seeds. G-S and
-G-D come from the spec. G-Q, G-B and G-H come from its amendments.
+The second runs six population gates on 2000 sites and 5 paired seeds. G-S and
+G-D come from the spec. G-Q, G-M, G-B and G-H come from its amendments.
 
 `--controls` feeds each gate an implementation it must reject, so a gate that
 has stopped checking anything is visible rather than silently green. Both
@@ -67,7 +67,7 @@ for `random.binomialvariate`.
 `spec/pr_checklist.md` is the acceptance criteria for a port's pull request. It
 states the declarations the PR description must make and the tests it must
 ship. It also names four hazards read from the Odin port at
-`ffinkdevs/Biofilms@4788dcd1`.
+`ffinkdevs/Biofilms@4788dcd1`, each with its status from the review of `f3bf6d6`.
 
 ## Reproducing
 

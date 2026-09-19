@@ -35,7 +35,8 @@ def G_of_T(T_h, mu=MU):
     x = mu * T_h
     if x < 1e-3:
         return 1.0 - x / 3.0 + x * x / 12.0        # limit is 1, not 0
-    return 2.0 * (x + math.expm1(-x)) / (x * x)     # expm1, never exp(-x)
+    # expm1, never exp(-x). Association as study2_run.py:70, so the bits match it.
+    return 2.0 / (x * x) * (x + math.expm1(-x))
 
 
 def SF(D, G):
@@ -145,7 +146,7 @@ def check_vectors():
     bc = VECTORS["branch_continuity"]
     x = bc["x"]
     diff = abs((1.0 - x / 3.0 + x * x / 12.0)
-               - 2.0 * (x + math.expm1(-x)) / (x * x))
+               - 2.0 / (x * x) * (x + math.expm1(-x)))
     record("|taylor - standard|", f"{diff:.3e}",
            f"< {bc['tolerance']:.0e}", diff < bc["tolerance"])
 

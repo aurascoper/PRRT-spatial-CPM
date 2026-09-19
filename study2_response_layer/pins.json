@@ -1,0 +1,4 @@
+{
+ "ref_p40_h3.bin": "8ca193775638faff57f0cc21e8f6ded3e257834dd8f139472e48682b638b9110",
+ "_note": "G7b compares the REF field's sha256 with this pin. study2_run.py never writes this file except on an explicit --pin when no pin exists."
+}

@@ -267,8 +267,11 @@ What changes. Three gates, no criterion:
   percentile. On the committed REF field the real gap is 249.361 survivors
   against a null of 0.198 (p97.5 0.203), 1258x. `verdict.json` records it as
   `noise_null`.
-- G7b now compares the REF file's hash with the pin the committed
-  `verdict.json` holds. The first run pinned; every later run compares.
+- G7b compares the REF file's hash with the pin in `pins.json`, a file the
+  runner never writes except on an explicit `--pin` when no pin exists. An
+  absent pin refuses. The fourth review found the earlier form fell back to
+  the hash of the file it had just read when `verdict.json` was absent, so a
+  garbage field pinned itself in a clean directory.
 - G8 now compares the heterogeneous arm's total with the uniform arm that
   `arm_pair` builds for the verdict at the primary level. Its control builds
   that arm from the median; the verdict would then move by 29%, and G8
@@ -279,12 +282,13 @@ What changes. Three gates, no criterion:
   2026-09-18.
 
 Each gate has a planted defect that it must refuse, run by
-`study2_response_layer/controls.py`: a flat noisy field (G6b), a different
-real file against the pin (G7b), a uniform arm built from the median (G8).
-All three are REFUSED-GATED. A fourth case substitutes a garbage field through
-`STUDY2_REF_BIN` with no control flag and runs twice; both runs are
-REFUSED-GATED, which holds only if the first wrote no `verdict.json`, and the
-file is byte-identical afterwards. The third review found the earlier form of
+`study2_response_layer/controls.py`: a flat noisy field (G6b) and a uniform arm
+built from the median (G8) through `--control=`; and two attacks on G7b along
+the real, unflagged path, a garbage field substituted through `STUDY2_REF_BIN`
+and run twice (both runs REFUSED-GATED, which holds only if the first wrote no
+`verdict.json`), then the same field with no pin file, which must be refused
+rather than self-pinned. Both `verdict.json` and `pins.json` are byte-identical
+afterwards. The third review found the earlier form of
 this check could not fail, because every control run took the `--control`
 branch and never reached the guard it protected.
 

@@ -269,13 +269,19 @@ What changes. Three gates, no criterion:
   `noise_null`.
 - G7b now compares the REF file's hash with the pin the committed
   `verdict.json` holds. The first run pinned; every later run compares.
-- G8 now sums the uniform-arm array the pipeline uses, so a wrongly built
-  uniform arm fails it.
+- G8 now compares the heterogeneous arm's total with the uniform arm that
+  `arm_pair` builds for the verdict at the primary level. Its control builds
+  that arm from the median; the verdict would then move by 29%, and G8
+  refuses it.
+- A REFUSED-GATED run writes no `verdict.json`. Before this rule a gated run
+  rewrote the G7b pin with the hash of the file it had just refused, and a
+  second run of the same file passed. Found by the second review of
+  2026-09-18.
 
 Each gate has a planted defect that it must refuse, run by
 `study2_response_layer/controls.py`: a flat noisy field (G6b), a different
 real file against the pin (G7b), a uniform arm built from the median (G8).
-All three are REFUSED-GATED.
+All three are REFUSED-GATED, and `verdict.json` is byte-identical afterwards.
 
 What does not change. The verdict, the four criteria and every number in
 `verdict.json` before this amendment. The `2331x` figure the README once quoted

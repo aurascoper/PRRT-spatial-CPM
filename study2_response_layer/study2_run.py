@@ -149,28 +149,32 @@ print(f"\nViable cells: {n_viable}; dose field over viable cells: "
 
 # ---- G4: uniform-field assembler gate --------------------------------------
 D_unif_field = np.full(n_viable, D_v.mean())
-if CONTROL == "unif": D_unif_field = np.full(n_viable, float(np.median(D_v)))   # G8 control: wrong uniform arm
 ln_het_unif_input = ln_tcp(D_unif_field, 1.0, G96)
 ln_uni_unif_input = -float(np.sum(sf(D_unif_field, G96)))  # independent path
 gate("G4 uniform-field assembler",
      abs(ln_het_unif_input - ln_uni_unif_input) <= 1e-9 * abs(ln_uni_unif_input),
      "het pipeline on a uniform field == uniform pipeline (machine precision)")
 
+# ---- Arms + scans ------------------------------------------------------------
+ARM_D_U = [None]   # the uniform dose arm_pair last built; G8 reads it (issue #13)
+
+def arm_pair(D_v_field, dose_mean_scale, n_clon, G):
+    D_h = dose_mean_scale * D_v_field / D_v_field.mean()
+    # G8's control builds the verdict's own uniform arm from the median
+    D_u = float(np.median(D_h)) if CONTROL == "unif" else float(D_h.mean())
+    ARM_D_U[0] = D_u
+    return ln_tcp(D_h, n_clon, G), ln_tcp(np.full(D_h.size, D_u), n_clon, G)
+
 # ---- G8: energy bookkeeping -------------------------------------------------
 D_unif = float(D_v.mean())
 G96_val = G96
-# total viable dose, both arms, in Gy*cells
+# total viable dose, both arms, in Gy*cells. The uniform arm is the one arm_pair
+# builds for the verdict at the primary level, not a separate array (issue #13).
+arm_pair(E_v, DOSE_PRIMARY, 1.0, G96_val)
 tot_het = float(D_v.sum())
-tot_uni = float(D_unif_field.sum())   # the array the uniform arm uses, not mean*n (issue #13)
+tot_uni = ARM_D_U[0] * n_viable
 gate("G8 energy bookkeeping", abs(tot_het - tot_uni) <= 1e-12 * tot_het,
      f"total viable dose het {tot_het:.9f} vs uniform {tot_uni:.9f} Gy*cells")
-
-# ---- Arms + scans ------------------------------------------------------------
-def arm_pair(D_v_field, dose_mean_scale, n_clon, G):
-    D_h = dose_mean_scale * D_v_field / D_v_field.mean()
-    D_u = dose_mean_scale * D_v_field.mean() / D_v_field.mean()  # == mean
-    D_u = float(D_h.mean())
-    return ln_tcp(D_h, n_clon, G), ln_tcp(np.full(D_h.size, D_u), n_clon, G)
 
 results = {}
 all_c = True
@@ -311,7 +315,9 @@ out = {
     },
     "G_curve": {f"T={t:g}h": float(gg) for t, gg in zip(T_grid, G_vals)},
 }
-if CONTROL:
+if gate_failures:
+    print("\nREFUSED-GATED: verdict.json not written; the G7b pin stays as committed")
+elif CONTROL:
     print(f"\ncontrol={CONTROL}: verdict.json not written")
 else:
     with open(f"{OUT}/verdict.json", "w") as f:

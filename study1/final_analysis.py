@@ -59,8 +59,9 @@ gact = g["activity"].astype(np.float64)
 dw = fftconvolve(gact, kw, mode="same", axes=(0,1,2)).ravel()/act.sum()
 rw = (dw[core]-r3[core])/r3[core]
 p95_neg = float(np.percentile(np.abs(rw),95))
-print(f"NEGATIVE CONTROL wrong-kernel p95 = {p95_neg:.4f} (>> 2%: pipeline can detect bad kernels: {'OK' if p95_neg > 0.02 else 'FAIL'})")
-if p95_neg <= 0.02: sys.exit("REFUSED: the wrong kernel passed the 2% criterion; the pipeline cannot detect bad kernels")
+neg_ok = p95_neg > 3.0 * p95    # the wrong kernel must be far worse than the right one, which is itself 23.8% off
+print(f"NEGATIVE CONTROL wrong-kernel p95 = {p95_neg:.4f} vs DPK {p95:.4f} (must exceed 3x: {'OK' if neg_ok else 'FAIL'})")
+if not neg_ok: sys.exit("REFUSED: the wrong kernel is not distinguishable from the right one")
 
 # VERDICT
 THRESH = 0.02

@@ -5,5 +5,7 @@
  "total_MeV": 1447.4625803430622,
  "dose_sha256": "569b511e2b946c370a28f220a002c34d99044f11e6be3bb770e487204d3453ec",
  "arm": "DPK",
- "precision": "FP64 CPU FFT (scipy)"
+ "precision": "FP64 CPU FFT (scipy)",
+ "kernel_seed": 20260916,
+ "seed_note": "kernel_p40 seed, added by hand from the protocol's declared seed; the application did not emit it at the time (issue #9)"
 }

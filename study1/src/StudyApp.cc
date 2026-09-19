@@ -38,6 +38,7 @@ using json = nlohmann::json;
 
 Geom g_geom;
 G4String g_mode = "field";
+long g_seed = 20260916;   // recorded in the sidecar (issue #9)
 G4String g_outPrefix = "out";
 
 // ---------------- detector ----------------
@@ -185,6 +186,7 @@ void StudyRunAction::EndOfRunAction(const G4Run* aRun) {
     meta["n"] = n;
     meta["pitch_um"] = g_geom.pitch_um;
     meta["decays_simulated"] = run->Decays();
+    meta["seed"] = g_seed;
     meta["units"] = "MeV per voxel, C-order";
     meta["geant4_version"] = "11.4.2";
     meta["physics"] = "G4EmStandardPhysics + G4Decay + G4RadioactiveDecay (ENSDF, RDM 6.1.2)";
@@ -252,8 +254,8 @@ int main(int argc, char** argv) {
     // else h1 is a strict subset of h2 and the statistical ladder is
     // vacuous — proven 2026-09-16: h2/h1 = 3.9988 with r1<=r2 at every
     // nonzero voxel). Reproducibility = same seed reproduces same run.
-    long seed = (argc > 8) ? std::stol(argv[8]) : 20260916;
-    G4Random::setTheSeed(seed);
+    g_seed = (argc > 8) ? std::stol(argv[8]) : 20260916;
+    G4Random::setTheSeed(g_seed);
 
     if (g_mode == "field") {
         // geom bin: int32 cell_id[n^3] then float64 activity[n^3]; n from sidecar json

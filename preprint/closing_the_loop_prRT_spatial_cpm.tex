@@ -106,8 +106,10 @@ protracted-exposure linear-quadratic kinetics, and carries a heritable SSTR2 exp
 survival under heterogeneous dose closes the loop into the next cycle's activity map. The one-way dose-transfer foundation
 (geometry export, transport, dose conversion, cell-level attribution) is inherited from our
 validated CPM--OpenMC coupling and is reused here unchanged; what is new is the response layer
-and the activity-feedback specification. No simulation results are reported: every executed
-quantity in this preprint is either a literature prior or a verified absence.
+and the activity-feedback specification. Three executed studies are reported in the
+Conclusion, each against a pre-declared protocol with negative-control gates: transport
+caching, open-loop response, and closed-loop selection, all on a synthetic lesion geometry.
+Every other quantity in this preprint is either a literature prior or a verified absence.
 
 The boundaries are declared rather than discovered late. The parameters are separated by
 provenance (measured inputs, literature priors, declared modelling choices) and are not reported
@@ -306,9 +308,10 @@ The pieces exist. The loop has never been closed.
 
 \subsection{Scope and execution state}
 
-The framework is a specification. Nothing in Section~\ref{sec:framework} has been executed
-as a coupled simulation in this preprint, and no result of this manuscript depends on the
-loop running. What has been executed and validated, in our prior work, is the one-way
+The framework is a specification. Three studies have executed parts of it on a synthetic
+lesion geometry with the Potts Hamiltonian inactive, and the Conclusion reports them. The
+framework as specified here, with active Potts dynamics on a measured activity map, has not
+run, and no result of this manuscript depends on that full loop running. What has been executed and validated, in our prior work, is the one-way
 transport foundation: geometry export from a CPM, Monte Carlo transport, dose conversion,
 and cell-level attribution, with conservation and orientation checks across the exchange
 boundary \cite{kinder2026biofilm}. The response layer and activity feedback specified here
@@ -590,7 +593,8 @@ quantities; it may not recommend them.
 This preprint specifies a closed-loop, histology-initialized, cell-resolved model of PRRT response in neuroendocrine
 tumors. It verifies by systematic search that no published work couples measured activity distributions to spatially
 explicit selection dynamics. It separates every parameter by provenance so the specification cannot be mistaken for a
-calibration. It reports no simulation results. The one-way transport foundation is
+calibration. It reports three executed studies on a synthetic geometry, each committed with
+its protocol, code and verdict. The one-way transport foundation is
 inherited from validated prior work \cite{kinder2026biofilm}; the response layer and the
 activity-feedback term are specified here for the first time, and the near-miss catalogue
 (Table~\ref{tab:nearmiss}) states exactly which existing studies each piece builds on.

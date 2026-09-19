@@ -10,5 +10,7 @@
  "physics": "G4EmStandardPhysics + G4Decay + G4RadioactiveDecay (ENSDF, RDM 6.1.2)",
  "pitch_um": 40.0,
  "step_function": "dRoverRange 0.1, final 1 um",
- "units": "MeV per voxel, C-order"
+ "units": "MeV per voxel, C-order",
+ "seed": 20260919,
+ "seed_note": "added by hand from the v1.6 amendment's declared argv; the application did not emit it (issue #9)"
 }

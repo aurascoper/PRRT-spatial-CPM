@@ -332,3 +332,11 @@ with `decays_simulated`) against a DPK field scaled by total activity. It now
 puts both arms on a per-decay basis, the convention `final_analysis.py` always
 used. Its pitch-40 cell p95 is then 23.8%, the published figure, and its
 verdict FAIL-DPK is issued for the stated reason.
+
+Two more corrections from the second review of 2026-09-18. `load_ref` returned
+raw MeV sums, so the C1 ladder was right only when both runs had the same decay
+count; with h4 absent the new selection rule pairs h2 with h3 and read 75.5%
+where the per-decay value is 2.62%. `load_ref` now divides by
+`decays_simulated`, so C1 and the DPK path share one basis. And
+`ref_p40_h4.json` carries `seed: 20260919`, added by hand from the declared
+argv, because the application does not emit it (issue #9).

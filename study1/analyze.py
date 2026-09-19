@@ -36,7 +36,7 @@ def load_ref(p, lvl):
     meta = json.load(open(f"{BASE}/runs/ref_p{p}_h{lvl}.json"))
     e = np.fromfile(f"{BASE}/runs/ref_p{p}_h{lvl}.bin", dtype=np.float64)
     n = meta["n"]
-    return e.reshape(n, n, n), meta
+    return e.reshape(n, n, n) / meta["decays_simulated"], meta   # per decay (v1.6)
 
 def load_dpk(p):
     d = np.load(f"{BASE}/runs/dpk_p{p}.npy")
@@ -84,7 +84,7 @@ def verdict(p):
     # scale with decays_simulated against a DPK field scaled by total activity)
     d, dmeta = load_dpk(p)
     d = d / float(np.load(f"{DATA}/geometry_pitch{p}.npz")["activity"].sum())
-    ref = r2 / m2["decays_simulated"]
+    ref = r2                                    # load_ref is per decay (v1.6)
     core = core_mask(ref)
     # total-energy conservation check
     out["total_ref_MeV_per_decay"] = float(ref.sum())

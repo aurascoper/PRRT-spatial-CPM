@@ -1,9 +1,9 @@
 import numpy as np, json
 import os
-BASE = "/home/aurascoper/Developer/PRRT-spatial-cpm/study1_dpk_vs_mc"
+BASE = os.path.dirname(os.path.abspath(__file__))
 os.chdir(BASE)
 
-g = np.load("geometry_pitch40.npz")
+g = np.load("../data/geometry_pitch40.npz")
 occ = (g["cell_id"] > 0).ravel()
 act = g["activity"].ravel()
 
@@ -91,5 +91,5 @@ json.dump({
     "negative_control_p95": float(np.percentile(np.abs(rw),95)),
     "mechanism": "FFT-convolution infinite-medium boundary vs physical escape; "
                  "radial DPK/REF 1.000 center -> 1.033 boundary (uniform-box C3)",
-}, open("runs/verdict_final.json", "w"), indent=1)
-print("\nruns/verdict_final.json written")
+}, open("verdict.json", "w"), indent=1)
+print("\nverdict.json written")

@@ -5,16 +5,16 @@ Executes study2_response_layer/PROTOCOL.md v1.0 exactly: gates G1-G8 first,
 then the pre-declared endpoints. No TCP verdict is issued if any gate fails
 (REFUSED-GATED).
 
-Fixed objects (Study 1, hashed):
-  geometry_pitch40.npz  (activity/cell/mask map, sha pinned in meta json)
-  runs/ref_p40_h3.bin   (128M-decay Geant4 REF dose field, MeV/voxel)
+Fixed objects (Study 1, hashed), paths from the repository root:
+  data/geometry_pitch40.npz   (activity/cell/mask map, sha pinned in study1 meta json)
+  study1/runs/ref_p40_h3.bin  (128M-decay Geant4 REF dose field, MeV/voxel)
 """
-import json
+import json, os   # one line: citations into this file are by line number
 import hashlib
 import numpy as np
 
-BASE = "/home/aurascoper/Developer/PRRT-spatial-cpm/study1_dpk_vs_mc"
-OUT = "/home/aurascoper/Developer/PRRT-spatial-cpm/study2_response_layer"
+OUT = os.path.dirname(os.path.abspath(__file__))     # study2_response_layer/
+BASE, DATA = os.path.join(OUT, "..", "study1"), os.path.join(OUT, "..", "data")
 
 # ---- Declared parameters (PROTOCOL v1.0, fixed before running) -------------
 ALPHA = 0.24          # Gy^-1, NCI-H69 EBRT fit, Tamborino 2025 Table 1
@@ -84,7 +84,7 @@ def ln_tcp(D_viable, n_clon, G):
 
 # ---- G7: fixed-object hashes ----------------------------------------------
 geo_meta = json.load(open(f"{BASE}/geometry_pitch40_meta.json"))
-geo_sha = sha256_file(f"{BASE}/geometry_pitch40.npz")
+geo_sha = sha256_file(f"{DATA}/geometry_pitch40.npz")
 gate("G7a geometry hash", geo_sha == geo_meta["npz_sha256"],
      f"meta {geo_meta['npz_sha256'][:16]}.. vs file {geo_sha[:16]}..")
 
@@ -129,7 +129,7 @@ for D_g in [2.0, 8.0, 10.0]:
 gate("G3 rate/protraction", g3_ok, "; ".join(g3_detail))
 
 # ---- Load dose field, build cell doses -------------------------------------
-g = np.load(f"{BASE}/geometry_pitch40.npz")
+g = np.load(f"{DATA}/geometry_pitch40.npz")
 cell_id = g["cell_id"]
 viable = cell_id > 0
 n_viable = int(viable.sum())

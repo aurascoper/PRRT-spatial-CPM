@@ -2,10 +2,12 @@
 
 Code, protocols, and verdicts for three executed studies behind the preprint
 *Closing the Loop from Measured Activity to Cell-Resolved Response*
-(`preprint/`). The framework couples histology-initialized Cellular Potts
-geometry to Lu-177 radiotherapy transport and a heritable SSTR2 expression
-trait, and tests whether retreatment failure in neuroendocrine tumors is an
-emergent property of spatial heterogeneity.
+(`preprint/`). The framework couples synthetic, histology-representative
+Cellular Potts geometry to Lu-177 radiotherapy transport and a heritable SSTR2
+expression trait, and tests whether retreatment failure in neuroendocrine
+tumors is an emergent property of spatial heterogeneity. The executed studies
+use a synthetic concentric-shell lesion, and the Potts Hamiltonian is inactive
+in them (`study3_closed_loop/PROTOCOL.md`).
 
 The framework extends the one-way transport foundation of
 [Kinder & Faulkner 2026, Biofilms](https://github.com/ffinkdevs/Biofilms)
@@ -17,7 +19,7 @@ architecture) to the neuroendocrine, CPM, histological realm.
 | Study | Question | Verdict |
 |---|---|---|
 | 1 — transport caching | Is a cached dose-point kernel (FFT convolution) admissible vs full Geant4 re-transport? | **FAIL-DPK**: cell p95 = 23.8% (criterion 2%); boundary-shell mechanism; full re-transport mandated |
-| 2 — open-loop response | Do protracted LQ kinetics on the validated dose field reproduce the Mellhammar TCP divergence? | **PASS-DIVERGENCE**: TCP_het < TCP_unif at every dose level; Jensen mechanism; 2331x the noise bar |
+| 2 — open-loop response | Do protracted LQ kinetics on the validated dose field reproduce the Mellhammar TCP divergence? | **PASS-DIVERGENCE**: TCP_het < TCP_unif at every dose level; Jensen mechanism; 1165x the 2-sigma noise bar |
 | 3 — closed loop | Does re-uptake ∝ heritable expression drive clone selection over 4 clinical cycles? | **PASS-SELECTION**: ln-e drift −0.484 closed vs −0.189 open-loop control; contrast +0.295; compounding only when the loop closes |
 
 Every protocol was written and amended **before** any verdict-issuing run,
@@ -30,7 +32,8 @@ see each `PROTOCOL.md` amendment history).
 
 ```
 preprint/                 manuscript (LaTeX + PDF + bibliography data)
-study1/                   DPK vs Monte Carlo transport study
+study1/                   DPK vs Monte Carlo transport study, Geant4 app
+                          source (src/, CMakeLists.txt) and pitch-40 runs
 study2_response_layer/    open-loop LQ + Lea-Catcheside TCP verification
 study3_closed_loop/       4-cycle closed-loop selection with re-transport
 figures/                  Study-3 summary figures
@@ -58,7 +61,8 @@ G-D come from the spec. G-Q, G-B and G-H come from its amendments.
 
 `--controls` feeds each gate an implementation it must reject, so a gate that
 has stopped checking anything is visible rather than silently green. Both
-scripts use the standard library only.
+scripts use the standard library only. The second needs Python 3.12 or later
+for `random.binomialvariate`.
 
 `spec/pr_checklist.md` is the acceptance criteria for a port's pull request. It
 states the declarations the PR description must make and the tests it must
@@ -71,13 +75,28 @@ Requirements: Python 3.12+ (numpy, scipy), Geant4 11.4.2 with
 RadioactiveDecay 6.1.2 (ENSDF), 24-thread CPU recommended.
 
 ```bash
-# Study 2 (minutes; needs study1's 128M dose field, see data/)
+# Transport app, used by Studies 1 and 3. It derives from the Geant4 example
+# examples/extended/radioactivedecay/rdecay02, which is not copied here.
+source study3_closed_loop/g4env.sh      # export GEANT4_PREFIX first if yours differs
+cmake -S study1 -B study1/build -DCMAKE_BUILD_TYPE=Release
+cmake --build study1/build -j           # produces study1/build/study1_app
+
+# Study 1 analysis (seconds; reads the committed pitch-40 runs in study1/runs/)
+python study1/final_analysis.py
+
+# Study 2 (minutes; needs the 128M-decay reference run, study1/runs/ref_p40_h3.bin)
 python study2_response_layer/study2_run.py
 
-# Study 3 (16 transport runs x ~75 s + dynamics; see g4env.sh for Geant4 env)
-source study3_closed_loop/g4env.sh
+# Study 3 (16 transport runs x ~75 s + dynamics). Every mode of study3_run.py,
+# the default `gates` included, invokes study1/build/study1_app.
 python study3_closed_loop/study3_run.py full
 ```
+
+`study1/runs/` holds the pitch-40 reference, kernel and DPK outputs the
+analysis scripts read. `study3_closed_loop/runs/` holds the four per-cycle dose
+fields and the cycle-4 activity map of the representative closed-loop
+replicate, which the figure and ParaView exporters read. Pitch-10 and pitch-20
+runs were never made, and `study1/analyze.py` reports them as missing input.
 
 The hashed fixed objects (`data/geometry_pitch40.npz`,
 sha256 `a6883b84...`) pin the synthetic lesion geometry: 25^3 voxels at
@@ -105,6 +124,10 @@ discipline of the Biofilms `export_vti.jl` exporter. Axis convention is
 pinned by an embedded orientation probe (x-fastest points, X=i, Y=j, Z=k).
 Regenerate with `pvpython paraview/export_vti_prrt.py` (ParaView 6.2 /
 VTK 9.7).
+
+`paraview/hist4d_c1.vti` to `hist4d_c4.vti` and `paraview/histology_4d.pvd` are
+four-cycle expression-state volumes on the same synthetic geometry. No
+histological image is an input to them.
 
 ## License
 

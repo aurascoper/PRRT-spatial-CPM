@@ -140,8 +140,9 @@ input reads the same whether it is checking something or nothing.
 
 The vectors for G-N through G-C are in `spec/reference_vectors.json`. The
 working forms of every gate are in `spec/check_vectors.py` and
-`spec/check_selection.py`, both stdlib-only Python, so they can be read as
-executable pseudocode rather than reimplemented from prose.
+`spec/check_selection.py`, both stdlib-only Python (3.12 or later for the
+second), so they can be read as executable pseudocode rather than
+reimplemented from prose.
 
 ## 5. What makes the PR mergeable
 

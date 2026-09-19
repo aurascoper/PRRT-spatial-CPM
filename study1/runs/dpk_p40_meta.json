@@ -1,0 +1,9 @@
+{
+ "pitch_um": 40,
+ "kernel_decays": 6000000,
+ "kernel_kbox": 91,
+ "total_MeV": 1447.4625803430622,
+ "dose_sha256": "569b511e2b946c370a28f220a002c34d99044f11e6be3bb770e487204d3453ec",
+ "arm": "DPK",
+ "precision": "FP64 CPU FFT (scipy)"
+}

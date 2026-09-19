@@ -18,13 +18,14 @@ import numpy as np
 import vtk
 from vtk.util import numpy_support as vns
 
-S1 = "/home/aurascoper/Developer/PRRT-spatial-cpm/study1_dpk_vs_mc"
-S3 = "/home/aurascoper/Developer/PRRT-spatial-cpm/study3_closed_loop"
-OUT = f"{S3}/paraview"
+OUT = os.path.dirname(os.path.abspath(__file__))     # paraview/
+S1 = os.path.join(OUT, "..", "study1")               # geometry meta
+S3 = os.path.join(OUT, "..", "study3_closed_loop")   # verdict.json, runs/
+DATA = os.path.join(OUT, "..", "data")               # hashed geometry npz
 os.makedirs(OUT, exist_ok=True)
 
 gmeta = json.load(open(f"{S1}/geometry_pitch40_meta.json"))
-gd = np.load(f"{S1}/geometry_pitch40.npz")
+gd = np.load(f"{DATA}/geometry_pitch40.npz")
 cell_id0 = gd["cell_id"].astype(np.int32)
 tissue = gd["tissue_type"].astype(np.int8)
 E_T0_vox = gd["activity"].astype(np.float64)      # T0 trait map (voxel space)

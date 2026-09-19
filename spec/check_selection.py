@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run gates G-S and G-D from spec section 5 on a reduced population.
+"""Run gates G-S, G-D and the amendment gates on a reduced population.
 
 G-N, G-O, G-P and G-C are closed-form and live in spec/check_vectors.py. The
 two gates here need a population that dies and refills over several cycles, so
@@ -12,12 +12,15 @@ spec says so for G-D: the sign and the closed > open ordering are the physics.
     python3 spec/check_selection.py             # the two gates, exit 0 or 1
     python3 spec/check_selection.py --controls  # also prove each gate can fail
 
-Stdlib only. Runs in about a second.
+Stdlib only, Python 3.12 or later. Runs in about a second.
 """
 import argparse
 import math
 import random
 import sys
+
+if sys.version_info < (3, 12):  # not an assert: python -O strips those
+    sys.exit("Python 3.12+ needed: random.binomialvariate")
 
 # ---- declared constants, spec section 2 and study3_run.py:44-52 -------------
 ALPHA, BETA = 0.24, 0.06
